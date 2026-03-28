@@ -1,0 +1,23 @@
+{
+  "name": "torrespdv",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0"
+  },
+  "dependencies": {
+    "html5-qrcode": "^2.3.8",
+    "lucide": "^1.7.0",
+    "papaparse": "^5.5.3"
+  }
+}

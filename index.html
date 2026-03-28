@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PDV Torres Mobile</title>
+    <meta name="description" content="Sistema de PDV Mobile para Materiais de Construção">
+    <link rel="stylesheet" href="/src/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="logo">
+                <h1>PDV Torres <span>Mobile</span></h1>
+            </div>
+            <div class="sale-info">
+                <div class="info-group">
+                    <label>Cliente</label>
+                    <input type="text" id="client-name" value="Cliente Balcão">
+                </div>
+                <div class="info-group">
+                    <label>Vendedor</label>
+                    <input type="text" id="seller-name" placeholder="Nome do vendedor">
+                </div>
+                <div class="meta-row">
+                    <span><strong>Tipo:</strong> Orçamento</span>
+                    <span><strong>Tabela:</strong> 1</span>
+                    <span id="current-datetime">--/--/-- --:--</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Product Search & Insertion -->
+            <section class="insertion-section">
+                <div class="search-container">
+                    <div class="input-with-icon">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="product-search" placeholder="Buscar produto por nome ou código..."
+                            autocomplete="off">
+                        <button id="btn-scan" title="Escanear Código">
+                            <i data-lucide="camera"></i>
+                        </button>
+                    </div>
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+
+                <div class="product-form card">
+                    <div class="form-row">
+                        <div class="field qnty">
+                            <label>Qtd</label>
+                            <input type="number" id="input-qnty" value="1" min="1">
+                        </div>
+                        <div class="field price">
+                            <label>Unitário</label>
+                            <input type="number" id="input-price" step="0.01" readonly>
+                        </div>
+                        <div class="field total">
+                            <label>Total</label>
+                            <input type="number" id="input-total" readonly>
+                        </div>
+                    </div>
+                    <div class="discount-row">
+                        <div class="field discount-val">
+                            <label>Desc. R$</label>
+                            <input type="number" id="input-discount-val" step="0.01" placeholder="0,00">
+                        </div>
+                        <div class="field discount-pct">
+                            <label>Desc. %</label>
+                            <input type="number" id="input-discount-pct" step="0.1" placeholder="0%">
+                        </div>
+                        <div class="field final">
+                            <label>Final</label>
+                            <input type="number" id="input-final-price" readonly>
+                        </div>
+                    </div>
+                    <div class="quick-discounts">
+                        <button type="button" class="btn-quick" data-discount="-5%">-5%</button>
+                        <button type="button" class="btn-quick" data-discount="-10%">-10%</button>
+                        <button type="button" class="btn-quick" data-discount="-10">-$10</button>
+                    </div>
+                    <button id="btn-add-item" class="btn-primary">
+                        <i data-lucide="plus"></i> Adicionar Item
+                    </button>
+                </div>
+            </section>
+
+            <!-- Cart Section -->
+            <section class="cart-section">
+                <div class="section-title">
+                    <i data-lucide="shopping-cart"></i>
+                    <h2>Carrinho</h2>
+                    <span id="cart-count">0 itens</span>
+                </div>
+                <div id="cart-list" class="cart-list">
+                    <!-- Items will be injected here -->
+                    <div class="empty-cart">
+                        <i data-lucide="package-open"></i>
+                        <p>Carrinho vazio</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Summary & Footer -->
+        <aside class="summary-section">
+            <div class="totals card">
+                <div class="total-line">
+                    <span>Subtotal</span>
+                    <span id="total-gross">R$ 0,00</span>
+                </div>
+                <div class="total-line discount">
+                    <span>Desconto Total</span>
+                    <span id="total-discount">R$ 0,00</span>
+                </div>
+                <div class="total-line final">
+                    <span>Total Final</span>
+                    <span id="total-final">R$ 0,00</span>
+                </div>
+            </div>
+            <button id="btn-print" class="btn-success">
+                <i data-lucide="printer"></i> Enviar para Impressão
+            </button>
+        </aside>
+
+        <!-- Modals/Utilities -->
+        <div id="scanner-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Escanear Código</h3>
+                    <button id="close-scanner"><i data-lucide="x"></i></button>
+                </div>
+                <div id="reader"></div>
+            </div>
+        </div>
+
+        <div id="import-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Configurações do Sistema</h3>
+                    <button id="close-import"><i data-lucide="x"></i></button>
+                </div>
+                <div class="import-body">
+                    <div class="info-group">
+                        <label>Vendedor Padrão</label>
+                        <input type="text" id="config-seller" placeholder="Seu nome">
+                    </div>
+                    <div class="info-group">
+                        <label>IP do Servidor de Impressão (Caixa)</label>
+                        <input type="text" id="config-ip" placeholder="Ex: 192.168.1.100">
+                    </div>
+                    <hr style="opacity: 0.1; margin: 1rem 0;">
+                    <p>Importar Catálogo (CSV): código, nome, preço, estoque</p>
+                    <input type="file" id="csv-file" accept=".csv">
+                    <button id="btn-process-import" class="btn-primary" style="margin-top: 1rem;">Salvar e
+                        Importar</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="btn-open-import" class="btn-fab" title="Configurações">
+            <i data-lucide="settings"></i>
+            <span class="fab-label">Configurações</span>
+        </button>
+
+        <footer>
+            <p>Desenvolvido por Sanzony Tech 2026</p>
+        </footer>
+    </div>
+
+    <!-- Scanner & Logic -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
