@@ -61,6 +61,10 @@ let selectedProduct = null;
 let editingItemId = null;
 let scanner = null;
 
+// POS 2.0 State
+let orderType = "ORÇAMENTO";
+let recentClients = JSON.parse(localStorage.getItem('recent_clients') || '[]');
+
 // Config state
 let configIp = localStorage.getItem('config_ip') || 'localhost';
 let configSeller = localStorage.getItem('config_seller') || '';
@@ -107,6 +111,11 @@ const successScreen = document.getElementById('success-screen');
 const btnNextOrder = document.getElementById('btn-next-order');
 const successMsg = document.getElementById('success-msg');
 
+const typeOrcamento = document.getElementById('type-orcamento');
+const typePedido = document.getElementById('type-pedido');
+const paymentMethod = document.getElementById('payment-method');
+const recentClientsList = document.getElementById('recent-clients-list');
+
 // Update Clock
 setInterval(() => {
     const now = new Date();
@@ -125,6 +134,48 @@ function getCurrentSequence() {
     const seq = parseInt(localStorage.getItem('order_sequence') || '1');
     return seq.toString().padStart(6, '0');
 }
+
+// --- Persistence Layer ---
+function saveCartState() {
+    localStorage.setItem('active_cart', JSON.stringify(cart.items));
+}
+
+function loadCartState() {
+    const saved = localStorage.getItem('active_cart');
+    if (saved) {
+        const items = JSON.parse(saved);
+        if (items.length > 0) {
+            cart.loadItems(items);
+        }
+    }
+}
+
+// --- Customer History ---
+function saveRecentClient(name) {
+    if (!name || name === "Cliente Balcão") return;
+    recentClients = [name, ...recentClients.filter(c => c !== name)].slice(0, 10);
+    localStorage.setItem('recent_clients', JSON.stringify(recentClients));
+    renderRecentClients();
+}
+
+function renderRecentClients() {
+    recentClientsList.innerHTML = recentClients.map(c => `<option value="${c}">`).join('');
+}
+
+// --- Order Type Toggle ---
+typeOrcamento.addEventListener('click', () => {
+    vibrate(30);
+    orderType = "ORÇAMENTO";
+    typeOrcamento.classList.add('active');
+    typePedido.classList.remove('active');
+});
+
+typePedido.addEventListener('click', () => {
+    vibrate(30);
+    orderType = "PEDIDO DE VENDA";
+    typePedido.classList.add('active');
+    typeOrcamento.classList.remove('active');
+});
 
 // --- Quick Products Section ---
 function renderQuickItems() {
@@ -286,6 +337,7 @@ btnAddItem.addEventListener('click', () => {
 cart.onUpdate = (items, totals) => {
     renderCart(items);
     updateTotals(totals);
+    saveCartState();
 };
 
 function renderCart(items) {
@@ -476,6 +528,10 @@ function generatePrintLayout(data) {
             <p>${data.endereco}</p>
             <p>Fone: ${data.telefone}</p>
         </div>
+        
+        <div style="text-align: center; margin: 1rem 0; font-weight: 800; font-size: 16pt;">
+            *** ${data.operacao} ***
+        </div>
 
         <div class="print-meta">
             <div>
@@ -515,6 +571,10 @@ function generatePrintLayout(data) {
                 <span>TOTAL FINAL:</span>
                 <span>R$ ${data.totalFinal.toFixed(2)}</span>
             </div>
+            <div class="print-totals-row" style="margin-top: 5px; font-weight: 700;">
+                <span>Forma de Pagamento:</span>
+                <span>${data.pagamento}</span>
+            </div>
         </div>
 
         <div class="print-footer">
@@ -536,17 +596,19 @@ btnPrint.addEventListener('click', () => {
 
     const sequence = getNextSequence();
     const totals = cart.getTotals();
+    const client = clientName.value || "Cliente Balcão";
 
     const data = {
         empresa: ENTERPRISE.nome,
         endereco: ENTERPRISE.endereco,
         telefone: ENTERPRISE.contato,
         sequencia: sequence,
-        operacao: "ORÇAMENTO",
+        operacao: orderType,
+        pagamento: paymentMethod.value,
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
         vendedor: sellerName.value || "Não informado",
-        cliente: clientName.value || "Cliente Balcão",
+        cliente: client,
         itens: cart.items.map(item => ({
             quantidade: item.quantity,
             descricao: item.name,
@@ -557,16 +619,17 @@ btnPrint.addEventListener('click', () => {
         totalFinal: totals.final
     };
 
-    // Save to History
+    // Save history & Client
     salesHistory.push(data);
     localStorage.setItem('sales_history', JSON.stringify(salesHistory));
+    saveRecentClient(client);
 
     // Prepare and Print
     generatePrintLayout(data);
     window.print();
 
     // Show Success Screen
-    successMsg.textContent = `Pedido #${sequence} finalizado com sucesso.`;
+    successMsg.textContent = `${orderType} #${sequence} finalizado com sucesso.`;
     successScreen.classList.remove('hidden');
 });
 
@@ -576,6 +639,11 @@ btnNextOrder.addEventListener('click', () => {
     cart.items = [];
     cart.notify();
     clientName.value = "Cliente Balcão";
+    localStorage.removeItem('active_cart'); // Clear persistence for fresh order
     successScreen.classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
+
+// --- Startup ---
+loadCartState();
+renderRecentClients();

@@ -24,7 +24,10 @@
             <div class="sale-info">
                 <div class="info-group">
                     <label>Cliente</label>
-                    <input type="text" id="client-name" value="Cliente Balcão">
+                    <input type="text" id="client-name" value="Cliente Balcão" list="recent-clients-list">
+                    <datalist id="recent-clients-list">
+                        <!-- Filled by main.js from localStorage -->
+                    </datalist>
                 </div>
                 <div class="info-group">
                     <label>Vendedor</label>
@@ -124,6 +127,23 @@
         <!-- Summary & Footer -->
         <aside class="summary-section">
             <div class="totals card">
+                <div class="type-selector">
+                    <button id="type-orcamento" class="btn-type active">Orçamento</button>
+                    <button id="type-pedido" class="btn-type">Pedido</button>
+                </div>
+                
+                <div class="payment-selector">
+                    <label>Forma de Pagamento</label>
+                    <select id="payment-method">
+                        <option value="DINHEIRO">Dinheiro</option>
+                        <option value="PIX">Pix</option>
+                        <option value="CARTÃO DÉBITO">Cartão Débito</option>
+                        <option value="CARTÃO CRÉDITO">Cartão Crédito</option>
+                    </select>
+                </div>
+
+                <hr style="opacity: 0.1; margin: 0.5rem 0;">
+
                 <div class="total-line">
                     <span>Subtotal</span>
                     <span id="total-gross">R$ 0,00</span>

@@ -1,7 +1,12 @@
 export class CartManager {
-    constructor() {
-        this.items = [];
+    constructor(items = []) {
+        this.items = items;
         this.onUpdate = null;
+    }
+
+    loadItems(items) {
+        this.items = items || [];
+        this.notify();
     }
 
     addItem(product, quantity, discountVal = 0, discountPct = 0) {
