@@ -21,6 +21,19 @@ export class CartManager {
         this.notify();
     }
 
+    updateItem(id, quantity, discountVal = 0, discountPct = 0) {
+        const itemIndex = this.items.findIndex(i => i.id === id);
+        if (itemIndex > -1) {
+            const item = this.items[itemIndex];
+            item.quantity = parseFloat(quantity);
+            item.discountVal = parseFloat(discountVal);
+            item.discountPct = parseFloat(discountPct);
+            
+            this.calculateItemTotal(item);
+            this.notify();
+        }
+    }
+
     calculateItemTotal(item) {
         const gross = item.price * item.quantity;
         // Rules: If discountPct is provided, it takes precedence or they are synced?

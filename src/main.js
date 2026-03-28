@@ -1,11 +1,11 @@
-import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download } from 'lucide';
+import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil } from 'lucide';
 import Papa from 'papaparse';
 import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 
 // Initialize Lucide
 createIcons({
-    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download }
+    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil }
 });
 
 // Haptic Feedback Helper
@@ -58,6 +58,7 @@ if (products.length === 0) {
 }
 const cart = new CartManager();
 let selectedProduct = null;
+let editingItemId = null;
 let scanner = null;
 
 // Config state
@@ -262,7 +263,14 @@ btnAddItem.addEventListener('click', () => {
     const discVal = parseFloat(inputDiscountVal.value) || 0;
     const discPct = parseFloat(inputDiscountPct.value) || 0;
 
-    cart.addItem(selectedProduct, qnty, discVal, discPct);
+    if (editingItemId) {
+        cart.updateItem(editingItemId, qnty, discVal, discPct);
+        editingItemId = null;
+        btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
+        createIcons({ icons: { Plus }});
+    } else {
+        cart.addItem(selectedProduct, qnty, discVal, discPct);
+    }
     
     // Clear form
     selectedProduct = null;
@@ -298,6 +306,9 @@ function renderCart(items) {
                 ${item.discountVal > 0 ? `<span class="discount-badge">-${item.discountPct}% (R$ ${item.discountVal.toFixed(2)})</span>` : ''}
             </div>
             <div class="cart-item-actions">
+                <button class="btn-action edit" data-id="${item.id}" style="color: var(--primary);">
+                    <i data-lucide="pencil"></i> Editar
+                </button>
                 <button class="btn-action remove" data-id="${item.id}">
                     <i data-lucide="x"></i> Remover
                 </button>
@@ -305,11 +316,51 @@ function renderCart(items) {
         </div>
     `).join('');
     
-    createIcons({ icons: { X } });
+    createIcons({ icons: { X, Pencil } });
 
     cartList.querySelectorAll('.remove').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (editingItemId === Number(btn.dataset.id)) {
+                // Cancel edit if removing the item being edited
+                editingItemId = null;
+                btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
+                createIcons({ icons: { Plus }});
+                selectedProduct = null;
+                productSearch.value = '';
+                inputPrice.value = '';
+                inputQnty.value = 1;
+                inputTotal.value = '';
+                inputDiscountVal.value = '';
+                inputDiscountPct.value = '';
+                inputFinalPrice.value = '';
+            }
             cart.removeItem(Number(btn.dataset.id));
+        });
+    });
+
+    cartList.querySelectorAll('.edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = Number(btn.dataset.id);
+            const item = cart.items.find(i => i.id === id);
+            if (!item) return;
+
+            vibrate(30);
+            editingItemId = id;
+            selectedProduct = { code: item.code, name: item.name, price: item.price };
+            
+            productSearch.value = item.name;
+            inputPrice.value = parseFloat(item.price).toFixed(2);
+            inputQnty.value = item.quantity;
+            inputDiscountVal.value = item.discountVal > 0 ? item.discountVal.toFixed(2) : '';
+            inputDiscountPct.value = item.discountPct > 0 ? item.discountPct.toFixed(2) : '';
+            
+            updateInsertionTotals();
+            
+            btnAddItem.innerHTML = `<i data-lucide="pencil"></i> Salvar Alterações`;
+            createIcons({ icons: { Pencil }});
+            
+            // Scroll to top to see the insertion form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
 }
