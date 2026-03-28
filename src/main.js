@@ -337,8 +337,76 @@ document.getElementById('close-scanner').addEventListener('click', async () => {
     scannerModal.classList.add('hidden');
 });
 
-// --- Thermal Print Logic ---
-btnPrint.addEventListener('click', async () => {
+// --- Browser Printing Logic (Epson L3250 & A4) ---
+function generatePrintLayout(data) {
+    const printArea = document.getElementById('print-area');
+    
+    const itemsHtml = data.itens.map(item => `
+        <tr>
+            <td>${item.quantidade}</td>
+            <td>${item.descricao}</td>
+            <td style="text-align: right">R$ ${item.total.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    printArea.innerHTML = `
+        <div class="print-header">
+            <h1 style="color: black !important;">${data.empresa.toUpperCase()}</h1>
+            <p>${data.endereco}</p>
+            <p>Fone: ${data.telefone}</p>
+        </div>
+
+        <div class="print-meta">
+            <div>
+                <strong>${data.operacao} Nº:</strong> ${data.sequencia}<br>
+                <strong>Data:</strong> ${data.data} - <strong>Hora:</strong> ${data.hora}
+            </div>
+            <div style="text-align: right">
+                <strong>Vendedor:</strong> ${data.vendedor}<br>
+                <strong>Cliente:</strong> ${data.cliente}
+            </div>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Qtd</th>
+                    <th>Descrição</th>
+                    <th style="text-align: right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+
+        <div class="print-totals">
+            <div class="print-totals-row">
+                <span>Subtotal:</span>
+                <span>R$ ${data.totalProdutos.toFixed(2)}</span>
+            </div>
+            ${data.descontos > 0 ? `
+            <div class="print-totals-row" style="color: #ef4444;">
+                <span>Descontos:</span>
+                <span>- R$ ${data.descontos.toFixed(2)}</span>
+            </div>` : ''}
+            <div class="print-totals-row final">
+                <span>TOTAL FINAL:</span>
+                <span>R$ ${data.totalFinal.toFixed(2)}</span>
+            </div>
+        </div>
+
+        <div class="print-footer">
+            <p>Confira a mercadoria no ato da entrega. Não aceitamos reclamações posteriores.</p>
+            <p>Alteração de preço sem prévio aviso.</p>
+            <p><strong>Obrigado pela preferência!</strong></p>
+            <br>
+            <p style="font-size: 8pt">Emitido por PDV Torres Mobile - ${new Date().toLocaleDateString()}</p>
+        </div>
+    `;
+}
+
+btnPrint.addEventListener('click', () => {
     if (cart.items.length === 0) {
         alert("O carrinho está vazio.");
         return;
@@ -347,14 +415,12 @@ btnPrint.addEventListener('click', async () => {
     const sequence = getNextSequence();
     const totals = cart.getTotals();
 
-    // Payload ALINHADO com o SEU server.js
-    const payload = {
+    const data = {
         empresa: ENTERPRISE.nome,
         endereco: ENTERPRISE.endereco,
         telefone: ENTERPRISE.contato,
-        whatsapp: "", // Opcional
         sequencia: sequence,
-        operacao: "VENDA MOBILE",
+        operacao: "ORÇAMENTO",
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
         vendedor: sellerName.value || "Não informado",
@@ -362,41 +428,17 @@ btnPrint.addEventListener('click', async () => {
         itens: cart.items.map(item => ({
             quantidade: item.quantity,
             descricao: item.name,
-            total: item.totalFinal // Enviando como número
+            total: item.totalFinal
         })),
-        totalProdutos: totals.gross,  // Nome correto esperado pelo servidor
-        descontos: totals.discount,    // Nome correto esperado pelo servidor
-        totalFinal: totals.final       // Nome correto esperado pelo servidor
+        totalProdutos: totals.gross,
+        descontos: totals.discount,
+        totalFinal: totals.final
     };
 
-    const serverUrl = `http://${configIp}:3000/imprimir`;
-    console.log(`Enviando para ${serverUrl}:`, payload);
+    // Prepare and Print
+    generatePrintLayout(data);
+    window.print();
 
-    try {
-        const response = await fetch(serverUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            alert(`Pedido #${sequence} enviado com sucesso!`);
-            // Limpar cliente, mas manter como padrão
-            clientName.value = "Cliente Balcão";
-        } else {
-            const errorText = await response.text();
-            throw new Error(errorText || "Erro na resposta do servidor.");
-        }
-    } catch (err) {
-        console.warn("Servidor local não encontrado ou erro:", err);
-        alert(`Ocorreu um erro ao falar com o servidor em ${configIp}: ${err.message}. Baixando JSON como backup.`);
-        
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", `pedido_${sequence}.json`);
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-    }
+    // Reset UI
+    clientName.value = "Cliente Balcão";
 });
