@@ -1,12 +1,19 @@
-import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings } from 'lucide';
+import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download } from 'lucide';
 import Papa from 'papaparse';
 import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 
 // Initialize Lucide
 createIcons({
-    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings }
+    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download }
 });
+
+// Haptic Feedback Helper
+function vibrate(ms = 50) {
+    if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(ms);
+    }
+}
 
 // Enterprise Metadata
 const ENTERPRISE = {
@@ -33,6 +40,7 @@ const DEFAULT_PRODUCTS = [
 
 // App State
 let products = JSON.parse(localStorage.getItem('products') || '[]');
+let salesHistory = JSON.parse(localStorage.getItem('sales_history') || '[]');
 
 // Seed if empty or update current test products
 if (products.length === 0) {
@@ -91,7 +99,12 @@ const importModal = document.getElementById('import-modal');
 const btnScan = document.getElementById('btn-scan');
 const btnOpenImport = document.getElementById('btn-open-import');
 const btnProcessImport = document.getElementById('btn-process-import');
+const btnExportSales = document.getElementById('btn-export-sales');
 const csvFile = document.getElementById('csv-file');
+
+const successScreen = document.getElementById('success-screen');
+const btnNextOrder = document.getElementById('btn-next-order');
+const successMsg = document.getElementById('success-msg');
 
 // Update Clock
 setInterval(() => {
@@ -106,6 +119,40 @@ function getNextSequence() {
     localStorage.setItem('order_sequence', seq.toString());
     return seq.toString().padStart(6, '0');
 }
+
+function getCurrentSequence() {
+    const seq = parseInt(localStorage.getItem('order_sequence') || '1');
+    return seq.toString().padStart(6, '0');
+}
+
+// --- Quick Products Section ---
+function renderQuickItems() {
+    const quickGrid = document.getElementById('quick-products');
+    if (!quickGrid) return;
+
+    // Use the first 5 default products as quick items
+    const quickItems = DEFAULT_PRODUCTS.slice(0, 5);
+    
+    quickGrid.innerHTML = quickItems.map(p => `
+        <div class="quick-card" data-code="${p.code}">
+            <span class="name">${p.name.split(' ')[0]} ${p.name.split(' ')[1] || ''}</span>
+            <span class="price">R$ ${p.price.toFixed(2)}</span>
+        </div>
+    `).join('');
+
+    quickGrid.querySelectorAll('.quick-card').forEach(card => {
+        card.addEventListener('click', () => {
+            vibrate(40);
+            const product = products.find(p => p.code === card.dataset.code);
+            if (product) {
+                cart.addItem(product, 1, 0, 0);
+                card.classList.add('product-highlight');
+                setTimeout(() => card.classList.remove('product-highlight'), 500);
+            }
+        });
+    });
+}
+renderQuickItems();
 
 // --- Product Search & Selection ---
 productSearch.addEventListener('input', (e) => {
@@ -187,9 +234,9 @@ inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
 inputDiscountVal.addEventListener('input', () => updateInsertionTotals('val'));
 inputDiscountPct.addEventListener('input', () => updateInsertionTotals('pct'));
 
-// Quick Discounts
 document.querySelectorAll('.btn-quick').forEach(btn => {
     btn.addEventListener('click', () => {
+        vibrate(30);
         if (!selectedProduct) return;
         const discountAttr = btn.dataset.discount;
         
@@ -205,6 +252,7 @@ document.querySelectorAll('.btn-quick').forEach(btn => {
 
 // --- Cart Management ---
 btnAddItem.addEventListener('click', () => {
+    vibrate(60);
     if (!selectedProduct) {
         alert("Selecione um produto primeiro.");
         return;
@@ -282,6 +330,7 @@ btnOpenImport.addEventListener('click', () => {
 document.getElementById('close-import').addEventListener('click', () => importModal.classList.add('hidden'));
 
 btnProcessImport.addEventListener('click', () => {
+    vibrate(50);
     // Save configurations
     configIp = inputConfigIp.value || 'localhost';
     configSeller = inputConfigSeller.value || '';
@@ -306,12 +355,33 @@ btnProcessImport.addEventListener('click', () => {
                 localStorage.setItem('products', JSON.stringify(products));
                 alert(`Configurações salvas e ${products.length} produtos importados.`);
                 importModal.classList.add('hidden');
+                renderQuickItems(); // Refresh quick grid with potentially new products
             }
         });
     } else {
         alert("Configurações salvas com sucesso.");
         importModal.classList.add('hidden');
     }
+});
+
+// Sales Export Logic
+btnExportSales.addEventListener('click', () => {
+    vibrate(50);
+    if (salesHistory.length === 0) {
+        alert("Nenhuma venda registrada hoje.");
+        return;
+    }
+
+    const csv = Papa.unparse(salesHistory);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vendas_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 });
 
 // --- Scanner Logic ---
@@ -407,6 +477,7 @@ function generatePrintLayout(data) {
 }
 
 btnPrint.addEventListener('click', () => {
+    vibrate(80);
     if (cart.items.length === 0) {
         alert("O carrinho está vazio.");
         return;
@@ -435,10 +506,25 @@ btnPrint.addEventListener('click', () => {
         totalFinal: totals.final
     };
 
+    // Save to History
+    salesHistory.push(data);
+    localStorage.setItem('sales_history', JSON.stringify(salesHistory));
+
     // Prepare and Print
     generatePrintLayout(data);
     window.print();
 
-    // Reset UI
+    // Show Success Screen
+    successMsg.textContent = `Pedido #${sequence} finalizado com sucesso.`;
+    successScreen.classList.remove('hidden');
+});
+
+btnNextOrder.addEventListener('click', () => {
+    vibrate(50);
+    // Reset UI & Cart
+    cart.items = [];
+    cart.notify();
     clientName.value = "Cliente Balcão";
+    successScreen.classList.add('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 });

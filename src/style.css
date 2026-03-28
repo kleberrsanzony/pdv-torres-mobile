@@ -507,6 +507,130 @@ footer {
   .form-row, .discount-row { grid-template-columns: 1fr 1fr; }
   .field.final { grid-column: span 2; }
 }
+
+/* --- Premium Upgrades --- */
+
+/* Quick Items Grid */
+.quick-items-section {
+  margin-bottom: 2rem;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.quick-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quick-card:active {
+  transform: scale(0.95);
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--primary);
+}
+
+.quick-card .name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 2.2em;
+}
+
+.quick-card .price {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+/* Glassmorphism */
+.modal-content {
+  background: rgba(30, 41, 59, 0.7) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Success Screen & Checkmark Animation */
+.success-card {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.success-icon {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.checkmark-circle {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  border-radius: 50%;
+  border: 4px solid var(--success);
+}
+
+.checkmark {
+  display: block;
+}
+
+.checkmark.draw:after {
+  animation-duration: 800ms;
+  animation-timing-function: ease;
+  animation-name: checkmark;
+  transform: scaleX(-1) rotate(135deg);
+}
+
+.checkmark:after {
+  opacity: 1;
+  height: 40px;
+  width: 20px;
+  transform-origin: left top;
+  border-right: 4px solid var(--success);
+  border-top: 4px solid var(--success);
+  content: "";
+  left: 15px;
+  top: 40px;
+  position: absolute;
+}
+
+@keyframes checkmark {
+  0% { height: 0; width: 0; opacity: 1; }
+  20% { height: 0; width: 20px; opacity: 1; }
+  40% { height: 40px; width: 20px; opacity: 1; }
+  100% { height: 40px; width: 20px; opacity: 1; }
+}
+
+@keyframes cartIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.cart-item {
+  animation: cartIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* --- End Premium Upgrades --- */
 /* Printing Styles (Epson L3250 & A4 Printers) */
 #print-area {
   display: none;
