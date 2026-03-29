@@ -201,6 +201,21 @@
             </div>
         </div>
 
+        <div id="empty-cart-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 320px;">
+                <div class="success-card">
+                    <div class="success-icon" style="color: #ef4444; margin-bottom: 1rem;">
+                        <i data-lucide="triangle-alert" style="width: 64px; height: 64px;"></i>
+                    </div>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff;">Carrinho Vazio!</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">Oops! Adicione pelo menos um produto ao carrinho antes de imprimir.</p>
+                    <button id="close-empty-cart" class="btn-primary" style="background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); width: 100%;">
+                        Entendi
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Success Screen Overlay -->
         <div id="success-screen" class="modal hidden">
             <div class="modal-content success-card">

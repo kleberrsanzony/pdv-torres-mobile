@@ -5,7 +5,7 @@ import { ScannerManager } from './scanner';
 
 // Initialize Lucide
 createIcons({
-    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil }
+    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert }
 });
 
 // Haptic Feedback Helper
@@ -115,6 +115,9 @@ const typeOrcamento = document.getElementById('type-orcamento');
 const typePedido = document.getElementById('type-pedido');
 const paymentMethod = document.getElementById('payment-method');
 const recentClientsList = document.getElementById('recent-clients-list');
+
+const emptyCartModal = document.getElementById('empty-cart-modal');
+const btnCloseEmptyCart = document.getElementById('close-empty-cart');
 
 // Update Clock
 setInterval(() => {
@@ -590,7 +593,7 @@ function generatePrintLayout(data) {
 btnPrint.addEventListener('click', () => {
     vibrate(80);
     if (cart.items.length === 0) {
-        alert("O carrinho está vazio.");
+        emptyCartModal.classList.remove('hidden');
         return;
     }
 
@@ -647,3 +650,8 @@ btnNextOrder.addEventListener('click', () => {
 // --- Startup ---
 loadCartState();
 renderRecentClients();
+
+// Modal Listeners
+btnCloseEmptyCart.addEventListener('click', () => {
+    emptyCartModal.classList.add('hidden');
+});
