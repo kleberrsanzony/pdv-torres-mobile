@@ -341,6 +341,8 @@ btnAddItem.addEventListener('click', () => {
         editingItemId = null;
         btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
         createIcons({ icons: { Plus }});
+    } else {
+        cart.addItem(selectedProduct, qnty, discVal, discPct);
     }
     
     // Clear form
