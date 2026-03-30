@@ -270,6 +270,23 @@
         <!-- Content will be injected by main.js -->
     </div>
 
+    <!-- Modal: Confirmar Limpar Venda -->
+    <div id="confirm-clear-modal" class="modal hidden">
+        <div class="modal-content" style="text-align: center; padding: 1.5rem;">
+            <div style="color: var(--danger); margin-bottom: 1rem;">
+                <i data-lucide="triangle-alert" style="width: 42px; height: 42px;"></i>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.2rem;">Limpar Venda?</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.85rem;">
+                Todos os itens do carrinho serão removidos. Esta ação não pode ser desfeita.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button id="btn-cancel-clear" class="btn-tab" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.05); font-size: 0.9rem; padding: 0.75rem;">Cancelar</button>
+                <button id="btn-confirm-clear" class="btn-tab active" style="flex: 1; justify-content: center; background: var(--danger); font-size: 0.9rem; padding: 0.75rem;">Limpar Tudo</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scanner & Logic -->
     <script type="module" src="/src/main.js"></script>
 </body>

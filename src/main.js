@@ -527,14 +527,30 @@ btnProcessImport.addEventListener('click', () => {
 });
 
 // Clear Order Logic
+const confirmClearModal = document.getElementById('confirm-clear-modal');
+const btnConfirmClear = document.getElementById('btn-confirm-clear');
+const btnCancelClear = document.getElementById('btn-cancel-clear');
+
 if (btnClearOrder) {
     btnClearOrder.addEventListener('click', () => {
         if (cart.items.length === 0) return;
-        if (confirm("Tem certeza que deseja limpar toda a venda?")) {
-            cart.clear();
-            renderCart();
-            vibrate(100);
-        }
+        vibrate(40);
+        confirmClearModal.classList.remove('hidden');
+    });
+}
+
+if (btnCancelClear) {
+    btnCancelClear.addEventListener('click', () => {
+        confirmClearModal.classList.add('hidden');
+    });
+}
+
+if (btnConfirmClear) {
+    btnConfirmClear.addEventListener('click', () => {
+        vibrate(100);
+        cart.clear();
+        renderCart();
+        confirmClearModal.classList.add('hidden');
     });
 }
 
