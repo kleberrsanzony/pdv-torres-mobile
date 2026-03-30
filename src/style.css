@@ -819,6 +819,19 @@ footer {
   gap: 1rem;
 }
 
+.summary-header-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.summary-header-main .label {
+  font-size: 0.8rem;
+  color: var(--primary);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .summary-header .label {
   font-size: 0.65rem;
   color: var(--text-muted);
@@ -850,9 +863,8 @@ footer {
 
 /* --- End Modular UI --- */
 
-/* Printing Styles (Epson L3250 & A4 Printers) */
 #print-area {
-  display: none;
+  display: none !important;
 }
 
 @media print {
