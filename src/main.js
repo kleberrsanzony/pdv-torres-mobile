@@ -549,7 +549,6 @@ if (btnConfirmClear) {
     btnConfirmClear.addEventListener('click', () => {
         vibrate(100);
         cart.clear();
-        renderCart();
         confirmClearModal.classList.add('hidden');
     });
 }
