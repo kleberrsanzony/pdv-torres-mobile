@@ -645,7 +645,17 @@ btnPrint.addEventListener('click', () => {
 
     // Send to Electronic/Remote Print Server if IP is configured
     if (configIp && configIp !== 'localhost') {
-        const serverUrl = configIp.includes(':') ? `http://${configIp}/imprimir` : `http://${configIp}:3000/imprimir`;
+        let urlBase = configIp.trim();
+        if (urlBase.endsWith('/')) urlBase = urlBase.slice(0, -1);
+        
+        let serverUrl = '';
+        if (urlBase.startsWith('http://') || urlBase.startsWith('https://')) {
+            serverUrl = `${urlBase}/imprimir`;
+        } else if (urlBase.includes('ngrok')) {
+            serverUrl = `https://${urlBase}/imprimir`; // Ngrok sempre HTTPS e sem porta 3000
+        } else {
+            serverUrl = urlBase.includes(':') ? `http://${urlBase}/imprimir` : `http://${urlBase}:3000/imprimir`;
+        }
         
         fetch(serverUrl, {
             method: 'POST',
