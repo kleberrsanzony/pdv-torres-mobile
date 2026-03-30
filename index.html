@@ -146,12 +146,12 @@
                 
                 <div class="payment-selector">
                     <label>Forma de Pagamento</label>
-                    <select id="payment-method">
-                        <option value="DINHEIRO">Dinheiro</option>
-                        <option value="PIX">Pix</option>
-                        <option value="CARTÃO DÉBITO">Cartão Débito</option>
-                        <option value="CARTÃO CRÉDITO">Cartão Crédito</option>
-                    </select>
+                    <div id="payment-grid" class="payment-grid">
+                        <button class="btn-payment active" data-value="DINHEIRO">Dinheiro</button>
+                        <button class="btn-payment" data-value="PIX">Pix</button>
+                        <button class="btn-payment" data-value="CARTÃO DÉBITO">Débito</button>
+                        <button class="btn-payment" data-value="CARTÃO CRÉDITO">Crédito</button>
+                    </div>
                 </div>
 
                 <hr style="opacity: 0.1; margin: 0.5rem 0;">

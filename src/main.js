@@ -70,6 +70,7 @@ let scanner = null;
 
 // POS 2.0 State
 let orderType = "ORÇAMENTO";
+let paymentMethod = "DINHEIRO";
 let recentClients = JSON.parse(localStorage.getItem('recent_clients') || '[]');
 
 // Config state
@@ -159,7 +160,7 @@ const successMsg = document.getElementById('success-msg');
 
 const typeOrcamento = document.getElementById('type-orcamento');
 const typePedido = document.getElementById('type-pedido');
-const paymentMethod = document.getElementById('payment-method');
+const paymentGrid = document.getElementById('payment-grid');
 const recentClientsList = document.getElementById('recent-clients-list');
 
 const emptyCartModal = document.getElementById('empty-cart-modal');
@@ -225,6 +226,19 @@ typePedido.addEventListener('click', () => {
     typePedido.classList.add('active');
     typeOrcamento.classList.remove('active');
 });
+
+// --- Payment Selector Logic ---
+if (paymentGrid) {
+    const paymentButtons = paymentGrid.querySelectorAll('.btn-payment');
+    paymentButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            vibrate(30);
+            paymentMethod = btn.dataset.value;
+            paymentButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+}
 
 // --- REMOVED: Quick Products Logic (Migrated to Tabs) ---
 
@@ -661,7 +675,7 @@ btnPrint.addEventListener('click', () => {
         whatsapp: configPixKey, // Assuming Pix key (phone) is also WhatsApp
         sequencia: sequence,
         operacao: orderType,
-        pagamento: paymentMethod.value,
+        pagamento: paymentMethod,
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
         vendedor: configSeller || "Sanzony",
