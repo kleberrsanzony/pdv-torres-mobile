@@ -2,6 +2,13 @@ import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, 
 import Papa from 'papaparse';
 import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
+import { registerSW } from 'virtual:pwa-register';
+
+// Register Service Worker for PWA (Installable App)
+const updateSW = registerSW({
+  onNeedRefresh() {},
+  onOfflineReady() {},
+});
 
 // Initialize Lucide
 createIcons({
