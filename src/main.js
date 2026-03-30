@@ -91,7 +91,6 @@ const cartList = document.getElementById('cart-list');
 const cartCount = document.getElementById('cart-count');
 const totalGross = document.getElementById('total-gross');
 const totalDiscount = document.getElementById('total-discount');
-const totalFinal = document.getElementById('total-final'); // Legacy reference if needed
 const inputTotalFinal = document.getElementById('input-total-final');
 const rowAdjustment = document.getElementById('row-adjustment');
 const totalAdjustmentDisplay = document.getElementById('total-adjustment');
@@ -342,19 +341,21 @@ btnAddItem.addEventListener('click', () => {
         editingItemId = null;
         btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
         createIcons({ icons: { Plus }});
-    } else {
-        cart.addItem(selectedProduct, qnty, discVal, discPct);
     }
     
     // Clear form
     selectedProduct = null;
-    productSearch.value = '';
+    editingItemId = null;
     inputPrice.value = '';
     inputQnty.value = 1;
     inputTotal.value = '';
     inputDiscountVal.value = '';
     inputDiscountPct.value = '';
     inputFinalPrice.value = '';
+    
+    // Clear product search and focus for next item
+    productSearch.value = '';
+    productSearch.focus();
 });
 
 cart.onUpdate = (items, totals) => {
@@ -442,9 +443,9 @@ function renderCart(items) {
 
 function updateTotals(totals) {
     cartCount.textContent = `${cart.items.length} itens`;
-    totalGross.textContent = `R$ ${totals.gross.toFixed(2)}`;
-    totalDiscount.textContent = `R$ ${totals.discount.toFixed(2)}`;
-    totalFinal.textContent = `R$ ${totals.final.toFixed(2)}`;
+    if (totalGross) totalGross.textContent = `R$ ${totals.gross.toFixed(2)}`;
+    if (totalDiscount) totalDiscount.textContent = `R$ ${totals.discount.toFixed(2)}`;
+    
     if (totalFinalHeader) totalFinalHeader.textContent = `R$ ${totals.final.toFixed(2)}`;
     if (totalGrossHeader) totalGrossHeader.textContent = `R$ ${totals.gross.toFixed(2)}`;
     if (totalDiscountHeader) totalDiscountHeader.textContent = `R$ ${totals.discount.toFixed(2)}`;
