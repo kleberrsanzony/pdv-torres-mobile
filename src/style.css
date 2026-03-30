@@ -809,10 +809,16 @@ footer {
 .summary-header-left {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+
+.summary-header-row {
+  display: flex;
+  gap: 1rem;
 }
 
 .summary-header .label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   text-transform: uppercase;
   font-weight: 700;

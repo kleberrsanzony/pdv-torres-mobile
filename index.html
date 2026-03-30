@@ -39,17 +39,17 @@
         </header>
 
         <nav class="tab-nav">
-            <button id="tab-venda" class="btn-tab active" data-tab="tab-content-venda">
-                <i data-lucide="shopping-cart"></i> 📋 Venda
-            </button>
-            <button id="tab-produtos" class="btn-tab" data-tab="tab-content-produtos">
+            <button id="tab-produtos" class="btn-tab active" data-tab="tab-content-produtos">
                 <i data-lucide="plus"></i> 🔍 Adicionar
+            </button>
+            <button id="tab-venda" class="btn-tab" data-tab="tab-content-venda">
+                <i data-lucide="shopping-cart"></i> 📋 Venda
             </button>
         </nav>
 
         <main>
             <!-- Tab: Venda (Carrinho) -->
-            <div id="tab-content-venda" class="tab-content active">
+            <div id="tab-content-venda" class="tab-content">
                 <section class="cart-section">
                     <div class="section-title">
                         <h2>Itens no Carrinho</h2>
@@ -65,7 +65,7 @@
             </div>
 
             <!-- Tab: Produtos (Busca) -->
-            <div id="tab-content-produtos" class="tab-content">
+            <div id="tab-content-produtos" class="tab-content active">
                 <section class="insertion-section">
                     <div class="section-title">
                         <h2>Buscar Produto</h2>
@@ -127,7 +127,10 @@
         <aside class="summary-section collapsed" id="summary-accordion">
             <div class="summary-header" id="btn-toggle-summary">
                 <div class="summary-header-left">
-                    <span class="label">Total a Pagar</span>
+                    <div class="summary-header-row">
+                        <span class="label">Subtotal: <strong id="total-gross-header" style="color: #fff;">R$ 0,00</strong></span>
+                        <span class="label">Descontos: <strong id="total-discount-header" style="color: #ef4444;">R$ 0,00</strong></span>
+                    </div>
                     <span id="total-final-header" class="val-main">R$ 0,00</span>
                 </div>
                 <i data-lucide="chevron-up" class="toggle-icon"></i>

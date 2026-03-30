@@ -112,6 +112,8 @@ if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 const btnToggleSummary = document.getElementById('btn-toggle-summary');
 const summaryAccordion = document.getElementById('summary-accordion');
 const totalFinalHeader = document.getElementById('total-final-header');
+const totalGrossHeader = document.getElementById('total-gross-header');
+const totalDiscountHeader = document.getElementById('total-discount-header');
 const tabButtons = document.querySelectorAll('.btn-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
@@ -350,10 +352,6 @@ btnAddItem.addEventListener('click', () => {
     inputDiscountVal.value = '';
     inputDiscountPct.value = '';
     inputFinalPrice.value = '';
-    
-    // Volta para a aba de venda para ver o item no carrinho (Opcional, mas melhora UX)
-    const tabVenda = document.getElementById('tab-venda');
-    if (tabVenda) tabVenda.click();
 });
 
 cart.onUpdate = (items, totals) => {
@@ -445,6 +443,8 @@ function updateTotals(totals) {
     totalDiscount.textContent = `R$ ${totals.discount.toFixed(2)}`;
     totalFinal.textContent = `R$ ${totals.final.toFixed(2)}`;
     if (totalFinalHeader) totalFinalHeader.textContent = `R$ ${totals.final.toFixed(2)}`;
+    if (totalGrossHeader) totalGrossHeader.textContent = `R$ ${totals.gross.toFixed(2)}`;
+    if (totalDiscountHeader) totalDiscountHeader.textContent = `R$ ${totals.discount.toFixed(2)}`;
 }
 
 // --- Import & Config Logic ---
