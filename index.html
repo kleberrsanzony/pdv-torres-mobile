@@ -24,20 +24,15 @@
                 <h1>PDV Torres <span>Mobile</span></h1>
             </div>
             <div class="sale-info">
-                <div class="info-group">
-                    <label>Cliente</label>
-                    <input type="text" id="client-name" value="Cliente Balcão" list="recent-clients-list">
-                    <datalist id="recent-clients-list">
-                        <!-- Filled by main.js from localStorage -->
-                    </datalist>
-                </div>
-                <div class="info-group">
-                    <label>Vendedor</label>
-                    <input type="text" id="seller-name" placeholder="Nome do vendedor">
+                <div class="info-row">
+                    <div class="info-group">
+                        <label>Cliente</label>
+                        <input type="text" id="client-name" value="Cliente Balcão" list="recent-clients-list">
+                        <datalist id="recent-clients-list"></datalist>
+                    </div>
                 </div>
                 <div class="meta-row">
-                    <span><strong>Tipo:</strong> Orçamento</span>
-                    <span><strong>Tabela:</strong> 1</span>
+                    <span>Vendedor: <strong id="display-vendedor">Sanzony</strong></span>
                     <span id="current-datetime">--/--/-- --:--</span>
                 </div>
             </div>
@@ -158,10 +153,16 @@
                     <span>Total Final</span>
                     <span id="total-final">R$ 0,00</span>
                 </div>
+
+                <div class="summary-actions">
+                    <button id="btn-print" class="btn-success">
+                        <i data-lucide="printer"></i> Enviar Impressão
+                    </button>
+                    <button id="btn-clear-order" class="btn-action" style="width: 100%; justify-content: center; margin-top: 5px; font-size: 0.7rem;">
+                        <i data-lucide="x"></i> Limpar Venda
+                    </button>
+                </div>
             </div>
-            <button id="btn-print" class="btn-success">
-                <i data-lucide="printer"></i> Enviar para Impressão
-            </button>
         </aside>
 
         <!-- Modals/Utilities -->

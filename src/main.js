@@ -95,7 +95,8 @@ const totalFinal = document.getElementById('total-final');
 const btnPrint = document.getElementById('btn-print');
 const currentDateTime = document.getElementById('current-datetime');
 const clientName = document.getElementById('client-name');
-const sellerName = document.getElementById('seller-name');
+const displayVendedor = document.getElementById('display-vendedor');
+const btnClearOrder = document.getElementById('btn-clear-order');
 
 // Config Modal Elements
 const inputConfigIp = document.getElementById('config-ip');
@@ -106,7 +107,7 @@ const inputConfigPixKey = document.getElementById('config-pix-key');
 inputConfigIp.value = configIp;
 inputConfigSeller.value = configSeller;
 inputConfigPixKey.value = configPixKey;
-sellerName.value = configSeller;
+if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
 // Modals
 const scannerModal = document.getElementById('scanner-modal');
@@ -455,7 +456,7 @@ btnProcessImport.addEventListener('click', () => {
     localStorage.setItem('config_ip', configIp);
     localStorage.setItem('config_seller', configSeller);
     localStorage.setItem('config_pix_key', configPixKey);
-    sellerName.value = configSeller;
+    if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
     // Handle CSV import if file is selected
     if (csvFile.files[0]) {
@@ -482,6 +483,18 @@ btnProcessImport.addEventListener('click', () => {
         importModal.classList.add('hidden');
     }
 });
+
+// Clear Order Logic
+if (btnClearOrder) {
+    btnClearOrder.addEventListener('click', () => {
+        if (cart.items.length === 0) return;
+        if (confirm("Tem certeza que deseja limpar toda a venda?")) {
+            cart.clear();
+            renderCart();
+            vibrate(100);
+        }
+    });
+}
 
 // Sales Export Logic
 btnExportSales.addEventListener('click', () => {
@@ -623,7 +636,7 @@ btnPrint.addEventListener('click', () => {
         pagamento: paymentMethod.value,
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
-        vendedor: sellerName.value || "Não informado",
+        vendedor: configSeller || "Sanzony",
         cliente: client,
         itens: cart.items.map(item => ({
             quantidade: item.quantity,
