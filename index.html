@@ -7,11 +7,13 @@
     <title>PDV Torres Mobile</title>
     <meta name="description" content="Sistema de PDV Mobile para Materiais de Construção">
     <link rel="stylesheet" href="/src/style.css">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/pwa-192x192.png">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -187,6 +189,10 @@
                     <div class="info-group">
                         <label>IP do Servidor de Impressão (Caixa)</label>
                         <input type="text" id="config-ip" placeholder="Ex: 192.168.1.100">
+                    </div>
+                    <div class="info-group">
+                        <label>Chave Pix para Pagamento</label>
+                        <input type="text" id="config-pix-key" placeholder="Ex: (81) 99783-4549">
                     </div>
                     <hr style="opacity: 0.1; margin: 1rem 0;">
                     <p>Importar Catálogo (CSV): código, nome, preço, estoque</p>

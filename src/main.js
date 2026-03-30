@@ -1,4 +1,4 @@
-import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil } from 'lucide';
+import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert } from 'lucide';
 import Papa from 'papaparse';
 import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
@@ -68,6 +68,7 @@ let recentClients = JSON.parse(localStorage.getItem('recent_clients') || '[]');
 // Config state
 let configIp = localStorage.getItem('config_ip') || 'localhost';
 let configSeller = localStorage.getItem('config_seller') || '';
+let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 
 // UI Elements
 const productSearch = document.getElementById('product-search');
@@ -92,10 +93,12 @@ const sellerName = document.getElementById('seller-name');
 // Config Modal Elements
 const inputConfigIp = document.getElementById('config-ip');
 const inputConfigSeller = document.getElementById('config-seller');
+const inputConfigPixKey = document.getElementById('config-pix-key');
 
 // Initialize UI with saved configs
 inputConfigIp.value = configIp;
 inputConfigSeller.value = configSeller;
+inputConfigPixKey.value = configPixKey;
 sellerName.value = configSeller;
 
 // Modals
@@ -440,8 +443,11 @@ btnProcessImport.addEventListener('click', () => {
     // Save configurations
     configIp = inputConfigIp.value || 'localhost';
     configSeller = inputConfigSeller.value || '';
+    configPixKey = inputConfigPixKey.value || '81997834549';
+
     localStorage.setItem('config_ip', configIp);
     localStorage.setItem('config_seller', configSeller);
+    localStorage.setItem('config_pix_key', configPixKey);
     sellerName.value = configSeller;
 
     // Handle CSV import if file is selected
@@ -513,79 +519,78 @@ document.getElementById('close-scanner').addEventListener('click', async () => {
     scannerModal.classList.add('hidden');
 });
 
-// --- Browser Printing Logic (Epson L3250 & A4) ---
+// --- Thermal Ticket Generation (Epson i8 / 58mm) ---
 function generatePrintLayout(data) {
     const printArea = document.getElementById('print-area');
-    
+    printArea.className = 'mode-thermal';
+
     const itemsHtml = data.itens.map(item => `
-        <tr>
-            <td>${item.quantidade}</td>
-            <td>${item.descricao}</td>
-            <td style="text-align: right">R$ ${item.total.toFixed(2)}</td>
-        </tr>
+        <div class="thermal-item">
+            <div class="thermal-item-name">${item.descricao.toUpperCase()}</div>
+            <div class="thermal-item-details">
+                <span>${item.quantidade} x R$ ${(item.total/item.quantidade).toFixed(2)}</span>
+                <span>R$ ${item.total.toFixed(2)}</span>
+            </div>
+        </div>
     `).join('');
 
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(configPixKey)}`;
+
     printArea.innerHTML = `
-        <div class="print-header">
-            <h1 style="color: black !important;">${data.empresa.toUpperCase()}</h1>
+        <div class="thermal-header">
+            <h3>${data.empresa}</h3>
             <p>${data.endereco}</p>
-            <p>Fone: ${data.telefone}</p>
+            <p>TELEFONE: ${data.telefone}</p>
+        </div>
+
+        <div class="thermal-divider-triple"></div>
+        
+        <div class="thermal-row-box">
+            <span>Sequência:</span>
+            <span class="thermal-val-big">${data.sequencia}</span>
+        </div>
+
+        <div class="thermal-info">
+            <div class="thermal-row"><span>Operação:</span> <strong>${data.operacao}</strong></div>
+            <div class="thermal-row"><span>Data:</span> ${data.data} ${data.hora}</div>
+            <div class="thermal-row"><span>Vendedor:</span> ${data.vendedor.toUpperCase()}</div>
+            <div class="thermal-row"><span>Cliente:</span> ${data.cliente.toUpperCase()}</div>
+        </div>
+
+        <div class="thermal-divider"></div>
+        
+        <div class="thermal-table-header">
+            <span>Descrição / Detalhes</span>
+            <span>Subtotal</span>
         </div>
         
-        <div style="text-align: center; margin: 1rem 0; font-weight: 800; font-size: 16pt;">
-            *** ${data.operacao} ***
+        <div class="thermal-items-list">
+            ${itemsHtml}
         </div>
 
-        <div class="print-meta">
-            <div>
-                <strong>${data.operacao} Nº:</strong> ${data.sequencia}<br>
-                <strong>Data:</strong> ${data.data} - <strong>Hora:</strong> ${data.hora}
-            </div>
-            <div style="text-align: right">
-                <strong>Vendedor:</strong> ${data.vendedor}<br>
-                <strong>Cliente:</strong> ${data.cliente}
-            </div>
+        <div class="thermal-divider"></div>
+
+        <div class="thermal-totals">
+            <div class="thermal-row"><span>Valor Total Prod R$:</span> <span>${data.totalProdutos.toFixed(2)}</span></div>
+            ${data.descontos > 0 ? `<div class="thermal-row"><span>Descontos R$:</span> <span>${data.descontos.toFixed(2)}</span></div>` : ''}
+            <div class="thermal-row thermal-final"><span>VALOR TOTAL R$:</span> <span>${data.totalFinal.toFixed(2)}</span></div>
+            <div class="thermal-row"><span>Pagamento:</span> <span>${data.pagamento}</span></div>
         </div>
 
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th>Qtd</th>
-                    <th>Descrição</th>
-                    <th style="text-align: right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemsHtml}
-            </tbody>
-        </table>
+        <div class="thermal-divider-dashed"></div>
 
-        <div class="print-totals">
-            <div class="print-totals-row">
-                <span>Subtotal:</span>
-                <span>R$ ${data.totalProdutos.toFixed(2)}</span>
+        <div class="thermal-footer">
+            <p>Confira a mercadoria no ato da entrega</p>
+            <p>Não aceitamos reclamações posteriores</p>
+            <p>* Alteração de preço sem prévio aviso *</p>
+            
+            <div class="thermal-pix-section">
+                <p><strong>Pague com PIX</strong></p>
+                <img src="${qrCodeUrl}" alt="QR Code Pix" class="pix-qr">
+                <p style="font-size: 8pt; margin-top: 4px;">Chave: ${configPixKey}</p>
             </div>
-            ${data.descontos > 0 ? `
-            <div class="print-totals-row" style="color: #ef4444;">
-                <span>Descontos:</span>
-                <span>- R$ ${data.descontos.toFixed(2)}</span>
-            </div>` : ''}
-            <div class="print-totals-row final">
-                <span>TOTAL FINAL:</span>
-                <span>R$ ${data.totalFinal.toFixed(2)}</span>
-            </div>
-            <div class="print-totals-row" style="margin-top: 5px; font-weight: 700;">
-                <span>Forma de Pagamento:</span>
-                <span>${data.pagamento}</span>
-            </div>
-        </div>
 
-        <div class="print-footer">
-            <p>Confira a mercadoria no ato da entrega. Não aceitamos reclamações posteriores.</p>
-            <p>Alteração de preço sem prévio aviso.</p>
-            <p><strong>Obrigado pela preferência!</strong></p>
-            <br>
-            <p style="font-size: 8pt">Emitido por PDV Torres Mobile - ${new Date().toLocaleDateString()}</p>
+            <p style="font-size: 7pt; margin-top: 10px; opacity: 0.7;">PDV Torres Mobile - v2.0</p>
         </div>
     `;
 }
@@ -605,6 +610,7 @@ btnPrint.addEventListener('click', () => {
         empresa: ENTERPRISE.nome,
         endereco: ENTERPRISE.endereco,
         telefone: ENTERPRISE.contato,
+        whatsapp: configPixKey, // Assuming Pix key (phone) is also WhatsApp
         sequencia: sequence,
         operacao: orderType,
         pagamento: paymentMethod.value,
@@ -627,9 +633,36 @@ btnPrint.addEventListener('click', () => {
     localStorage.setItem('sales_history', JSON.stringify(salesHistory));
     saveRecentClient(client);
 
-    // Prepare and Print
+    // Prepare Layout
     generatePrintLayout(data);
-    window.print();
+
+    // Send to Electronic/Remote Print Server if IP is configured
+    if (configIp && configIp !== 'localhost') {
+        const serverUrl = configIp.includes(':') ? `http://${configIp}/imprimir` : `http://${configIp}:3000/imprimir`;
+        
+        fetch(serverUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                console.log("Impressão enviada para o servidor remoto com sucesso.");
+            } else {
+                console.error("Erro no servidor de impressão:", res.error);
+                alert("Erro ao imprimir no servidor Windows: " + res.error);
+            }
+        })
+        .catch(err => {
+            console.error("Servidor de impressão inacessível:", err);
+            // Fallback to browser print if remote fails
+            window.print();
+        });
+    } else {
+        // Fallback/Local Browser printing
+        window.print();
+    }
 
     // Show Success Screen
     successMsg.textContent = `${orderType} #${sequence} finalizado com sucesso.`;
