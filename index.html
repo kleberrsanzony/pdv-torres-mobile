@@ -38,21 +38,39 @@
             </div>
         </header>
 
-        <main>
-            <!-- Quick Items (Most Sold) -->
-            <section class="quick-items-section">
-                <div class="section-title">
-                    <i data-lucide="zap"></i>
-                    <h2>Produtos Rápidos</h2>
-                </div>
-                <div id="quick-products" class="quick-grid">
-                    <!-- Loaded from DEFAULT_PRODUCTS in main.js -->
-                </div>
-            </section>
+        <nav class="tab-nav">
+            <button id="tab-venda" class="btn-tab active" data-tab="tab-content-venda">
+                <i data-lucide="shopping-cart"></i> 📋 Venda
+            </button>
+            <button id="tab-produtos" class="btn-tab" data-tab="tab-content-produtos">
+                <i data-lucide="plus"></i> 🔍 Adicionar
+            </button>
+        </nav>
 
-            <!-- Product Search & Insertion -->
-            <section class="insertion-section">
-                <div class="search-container">
+        <main>
+            <!-- Tab: Venda (Carrinho) -->
+            <div id="tab-content-venda" class="tab-content active">
+                <section class="cart-section">
+                    <div class="section-title">
+                        <h2>Itens no Carrinho</h2>
+                        <span id="cart-count">0 itens</span>
+                    </div>
+                    <div id="cart-list" class="cart-list">
+                        <div class="empty-cart">
+                            <i data-lucide="package-open"></i>
+                            <p>Carrinho vazio</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Tab: Produtos (Busca) -->
+            <div id="tab-content-produtos" class="tab-content">
+                <section class="insertion-section">
+                    <div class="section-title">
+                        <h2>Buscar Produto</h2>
+                    </div>
+                    <div class="search-container">
                     <div class="input-with-icon">
                         <i data-lucide="search"></i>
                         <input type="text" id="product-search" placeholder="Buscar produto por nome ou código..."
@@ -102,27 +120,19 @@
                         <i data-lucide="plus"></i> Adicionar Item
                     </button>
                 </div>
-            </section>
-
-            <!-- Cart Section -->
-            <section class="cart-section">
-                <div class="section-title">
-                    <i data-lucide="shopping-cart"></i>
-                    <h2>Carrinho</h2>
-                    <span id="cart-count">0 itens</span>
                 </div>
-                <div id="cart-list" class="cart-list">
-                    <!-- Items will be injected here -->
-                    <div class="empty-cart">
-                        <i data-lucide="package-open"></i>
-                        <p>Carrinho vazio</p>
-                    </div>
-                </div>
-            </section>
+            </div>
         </main>
 
-        <!-- Summary & Footer -->
-        <aside class="summary-section">
+        <aside class="summary-section collapsed" id="summary-accordion">
+            <div class="summary-header" id="btn-toggle-summary">
+                <div class="summary-header-left">
+                    <span class="label">Total a Pagar</span>
+                    <span id="total-final-header" class="val-main">R$ 0,00</span>
+                </div>
+                <i data-lucide="chevron-up" class="toggle-icon"></i>
+            </div>
+            
             <div class="totals card">
                 <div class="type-selector">
                     <button id="type-orcamento" class="btn-type active">Orçamento</button>

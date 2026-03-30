@@ -109,6 +109,37 @@ inputConfigSeller.value = configSeller;
 inputConfigPixKey.value = configPixKey;
 if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
+const btnToggleSummary = document.getElementById('btn-toggle-summary');
+const summaryAccordion = document.getElementById('summary-accordion');
+const totalFinalHeader = document.getElementById('total-final-header');
+const tabButtons = document.querySelectorAll('.btn-tab');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// --- Modular UI: Tab Logic ---
+tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        vibrate(30);
+        const target = btn.getAttribute('data-tab');
+        
+        tabButtons.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById(target).classList.add('active');
+        
+        // Se mudar de aba, recolhe o resumo para não atrapalhar
+        summaryAccordion.classList.add('collapsed');
+    });
+});
+
+// --- Modular UI: Accordion Logic ---
+if (btnToggleSummary) {
+    btnToggleSummary.addEventListener('click', () => {
+        vibrate(40);
+        summaryAccordion.classList.toggle('collapsed');
+    });
+}
+
 // Modals
 const scannerModal = document.getElementById('scanner-modal');
 const importModal = document.getElementById('import-modal');
@@ -191,34 +222,7 @@ typePedido.addEventListener('click', () => {
     typeOrcamento.classList.remove('active');
 });
 
-// --- Quick Products Section ---
-function renderQuickItems() {
-    const quickGrid = document.getElementById('quick-products');
-    if (!quickGrid) return;
-
-    // Use the first 5 default products as quick items
-    const quickItems = DEFAULT_PRODUCTS.slice(0, 5);
-    
-    quickGrid.innerHTML = quickItems.map(p => `
-        <div class="quick-card" data-code="${p.code}">
-            <span class="name">${p.name.split(' ')[0]} ${p.name.split(' ')[1] || ''}</span>
-            <span class="price">R$ ${p.price.toFixed(2)}</span>
-        </div>
-    `).join('');
-
-    quickGrid.querySelectorAll('.quick-card').forEach(card => {
-        card.addEventListener('click', () => {
-            vibrate(40);
-            const product = products.find(p => p.code === card.dataset.code);
-            if (product) {
-                cart.addItem(product, 1, 0, 0);
-                card.classList.add('product-highlight');
-                setTimeout(() => card.classList.remove('product-highlight'), 500);
-            }
-        });
-    });
-}
-renderQuickItems();
+// --- REMOVED: Quick Products Logic (Migrated to Tabs) ---
 
 // --- Product Search & Selection ---
 productSearch.addEventListener('input', (e) => {
@@ -346,6 +350,10 @@ btnAddItem.addEventListener('click', () => {
     inputDiscountVal.value = '';
     inputDiscountPct.value = '';
     inputFinalPrice.value = '';
+    
+    // Volta para a aba de venda para ver o item no carrinho (Opcional, mas melhora UX)
+    const tabVenda = document.getElementById('tab-venda');
+    if (tabVenda) tabVenda.click();
 });
 
 cart.onUpdate = (items, totals) => {
@@ -436,6 +444,7 @@ function updateTotals(totals) {
     totalGross.textContent = `R$ ${totals.gross.toFixed(2)}`;
     totalDiscount.textContent = `R$ ${totals.discount.toFixed(2)}`;
     totalFinal.textContent = `R$ ${totals.final.toFixed(2)}`;
+    if (totalFinalHeader) totalFinalHeader.textContent = `R$ ${totals.final.toFixed(2)}`;
 }
 
 // --- Import & Config Logic ---
@@ -475,7 +484,6 @@ btnProcessImport.addEventListener('click', () => {
                 localStorage.setItem('products', JSON.stringify(products));
                 alert(`Configurações salvas e ${products.length} produtos importados.`);
                 importModal.classList.add('hidden');
-                renderQuickItems(); // Refresh quick grid with potentially new products
             }
         });
     } else {
