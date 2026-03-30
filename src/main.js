@@ -91,7 +91,10 @@ const cartList = document.getElementById('cart-list');
 const cartCount = document.getElementById('cart-count');
 const totalGross = document.getElementById('total-gross');
 const totalDiscount = document.getElementById('total-discount');
-const totalFinal = document.getElementById('total-final');
+const totalFinal = document.getElementById('total-final'); // Legacy reference if needed
+const inputTotalFinal = document.getElementById('input-total-final');
+const rowAdjustment = document.getElementById('row-adjustment');
+const totalAdjustmentDisplay = document.getElementById('total-adjustment');
 const btnPrint = document.getElementById('btn-print');
 const currentDateTime = document.getElementById('current-datetime');
 const clientName = document.getElementById('client-name');
@@ -445,6 +448,20 @@ function updateTotals(totals) {
     if (totalFinalHeader) totalFinalHeader.textContent = `R$ ${totals.final.toFixed(2)}`;
     if (totalGrossHeader) totalGrossHeader.textContent = `R$ ${totals.gross.toFixed(2)}`;
     if (totalDiscountHeader) totalDiscountHeader.textContent = `R$ ${totals.discount.toFixed(2)}`;
+
+    // Sync input field value (Manual Rounding Support)
+    if (inputTotalFinal && document.activeElement !== inputTotalFinal) {
+        inputTotalFinal.value = totals.final.toFixed(2);
+    }
+
+    // Handle visible Adjustment row
+    const adjustment = cart.manualAdjustment;
+    if (adjustment !== 0) {
+        rowAdjustment.classList.remove('hidden');
+        totalAdjustmentDisplay.textContent = `R$ ${adjustment.toFixed(2)}`;
+    } else {
+        rowAdjustment.classList.add('hidden');
+    }
 }
 
 // --- Import & Config Logic ---
@@ -734,3 +751,22 @@ renderRecentClients();
 btnCloseEmptyCart.addEventListener('click', () => {
     emptyCartModal.classList.add('hidden');
 });
+
+// --- Manual Total Adjustment (Rounding) ---
+if (inputTotalFinal) {
+    inputTotalFinal.addEventListener('input', (e) => {
+        const newTotal = parseFloat(e.target.value) || 0;
+        const currentTotals = cart.getTotals();
+        
+        // Ajuste = (Bruto - Descontos Itens) - Novo Total Desejado
+        const currentBaseFinal = currentTotals.final + cart.manualAdjustment;
+        const neededAdjustment = currentBaseFinal - newTotal;
+        
+        cart.setManualAdjustment(neededAdjustment);
+    });
+    
+    // Prevent accidental accordion toggle when clicking the input
+    inputTotalFinal.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}

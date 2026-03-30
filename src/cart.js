@@ -1,6 +1,7 @@
 export class CartManager {
     constructor(items = []) {
         this.items = items;
+        this.manualAdjustment = 0;
         this.onUpdate = null;
     }
 
@@ -57,13 +58,29 @@ export class CartManager {
     }
 
     getTotals() {
-        return this.items.reduce((acc, item) => {
+        const totals = this.items.reduce((acc, item) => {
             const gross = item.price * item.quantity;
             acc.gross += gross;
             acc.discount += item.discountVal;
             acc.final += item.totalFinal;
             return acc;
         }, { gross: 0, discount: 0, final: 0 });
+
+        // Apply global manual adjustment (rounding)
+        totals.final -= this.manualAdjustment;
+        
+        return totals;
+    }
+
+    setManualAdjustment(adjustment) {
+        this.manualAdjustment = parseFloat(adjustment) || 0;
+        this.notify();
+    }
+
+    clear() {
+        this.items = [];
+        this.manualAdjustment = 0;
+        this.notify();
     }
 
     notify() {

@@ -436,17 +436,19 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  z-index: 1000;
+  padding: 0.5rem;
+  z-index: 2000;
 }
 
 .modal-content {
   background: var(--bg-card);
   width: 100%;
-  max-width: 400px;
+  max-width: 360px;
+  max-height: 95vh;
+  overflow-y: auto;
   border-radius: var(--radius);
-  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
 .modal-header {
