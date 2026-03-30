@@ -649,10 +649,18 @@ btnPrint.addEventListener('click', () => {
         if (urlBase.endsWith('/')) urlBase = urlBase.slice(0, -1);
         
         let serverUrl = '';
-        if (urlBase.startsWith('http://') || urlBase.startsWith('https://')) {
+        // Se for Ngrok, removemos a porta :3000 se o usuário colou e forçamos HTTPS
+        if (urlBase.includes('ngrok')) {
+            // Remove qualquer :porta (ex: :3000) e protocolos
+            let cleanUrl = urlBase.split(':')[0]
+                .replace('http://', '')
+                .replace('https://', '')
+                .replace('//', '');
+            
+            // Reconstrói URL segura
+            serverUrl = `https://${cleanUrl}/imprimir`;
+        } else if (urlBase.startsWith('http://') || urlBase.startsWith('https://')) {
             serverUrl = `${urlBase}/imprimir`;
-        } else if (urlBase.includes('ngrok')) {
-            serverUrl = `https://${urlBase}/imprimir`; // Ngrok sempre HTTPS e sem porta 3000
         } else {
             serverUrl = urlBase.includes(':') ? `http://${urlBase}/imprimir` : `http://${urlBase}:3000/imprimir`;
         }
