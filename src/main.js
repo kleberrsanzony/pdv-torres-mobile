@@ -30,22 +30,17 @@ const ENTERPRISE = {
     contato: "(11) 99999-9999 / WhatsApp"
 };
 
-// --- Mock Products Database (Optional) ---
-/* Descomente abaixo para usar produtos fixos de teste sem precisar importar Excel
-const mockProducts = [
-    { code: '1', name: 'Cimento CP-II 50kg', price: 34.90, stock: 154 },
-    { code: '2', name: 'Arame Recozido (kg)', price: 12.50, stock: 88 },
-    { code: '3', name: 'Tijolo 8 Furos (un)', price: 0.95, stock: 2400 },
-    { code: '4', name: 'Areia Lavada M3', price: 120.00, stock: 10 }
-];
-const products = mockProducts;
-*/
-
 // State Management
-let products = JSON.parse(localStorage.getItem('products')) || [];
+let products = JSON.parse(localStorage.getItem('products')) || []; 
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
-let orderType = 'ORCAMENTO'; // 'ORCAMENTO' or 'PEDIDO'
+let orderType = 'ORCAMENTO';
+let itemToRemoveId = null;
+
+// Configs
+let configIp = localStorage.getItem('config_ip') || 'localhost';
+let configSeller = localStorage.getItem('config_seller') || '';
+let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 
 // DOM Elements
 const productSearch = document.getElementById('product-search');
@@ -64,26 +59,58 @@ const currentDatetime = document.getElementById('current-datetime');
 const btnCancelSearch = document.getElementById('btn-cancel-search');
 const inputTotalFinal = document.getElementById('input-total-final');
 
-// Configs
-let configIp = localStorage.getItem('config_ip') || 'localhost';
-let configSeller = localStorage.getItem('config_seller') || '';
-let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
-
 // Apply Initial Configs
 if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
 // Initialize Managers
 const cart = new CartManager();
 
-// Configure Cart Update Listener (CRITICAL)
+// --- CENTRALIZED PRODUCT SYNC (PC <-> MOBILE) ---
+
+async function fetchProductsFromServer() {
+    const serverUrl = `https://${configIp}/produtos`;
+    console.log("LOG: Tentando sincronizar produtos com", serverUrl);
+    try {
+        const response = await fetch(serverUrl, {
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+        if (response.ok) {
+            const serverProducts = await response.json();
+            if (serverProducts && serverProducts.length > 0) {
+                products = serverProducts;
+                localStorage.setItem('products', JSON.stringify(products));
+                console.log(`LOG: ${products.length} produtos sincronizados do PC.`);
+            }
+        }
+    } catch (err) {
+        console.warn("LOG: Servidor offline. Usando catálogo local.", err);
+    }
+}
+
+async function saveProductsToServer(newProducts) {
+    const serverUrl = `https://${configIp}/produtos`;
+    try {
+        await fetch(serverUrl, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(newProducts)
+        });
+        console.log("LOG: Catálogo enviado para o PC central.");
+    } catch (err) {
+        console.error("LOG: Erro ao sincronizar catálogo com o PC.", err);
+    }
+}
+
+// Auto-sync on Load
+fetchProductsFromServer();
+
+// Configure Cart Update Listener
 cart.onUpdate = (items, totals) => {
-    // 1. Update Cart UI list
     if (items.length === 0) {
-        cartList.innerHTML = `
-            <div class="empty-cart">
-                <i data-lucide="package-open"></i>
-                <p>Carrinho vazio</p>
-            </div>`;
+        cartList.innerHTML = `<div class="empty-cart"><i data-lucide="package-open"></i><p>Carrinho vazio</p></div>`;
     } else {
         cartList.innerHTML = items.map(item => `
             <div class="cart-item">
@@ -93,55 +120,53 @@ cart.onUpdate = (items, totals) => {
                 </div>
                 <div class="item-right">
                     <span class="item-total">R$ ${item.totalFinal.toFixed(2)}</span>
-                    <button class="btn-remove" data-id="${item.id}"><i data-lucide="trash-2"></i></button>
+                    <button class="btn-remove-text" data-id="${item.id}">Remover</button>
                 </div>
             </div>
         `).join('');
     }
-    
-    // Refresh Icons inside cart
-    createIcons({ icons: { PackageOpen, Trash2 } });
-    
-    // 2. Remove Button Handlers
-    cartList.querySelectorAll('.btn-remove').forEach(btn => {
+    createIcons({ icons: { PackageOpen } });
+    cartList.querySelectorAll('.btn-remove-text').forEach(btn => {
         btn.addEventListener('click', () => {
-            cart.removeItem(Number(btn.dataset.id));
+            itemToRemoveId = Number(btn.dataset.id);
+            document.getElementById('confirm-remove-item-modal').classList.remove('hidden');
             vibrate(30);
         });
     });
-
-    // 3. Update Global UI Totals
     cartCount.textContent = `${items.length} itens`;
     document.getElementById('total-gross').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    
-    // Header Totals
     document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
     document.getElementById('total-final-header').textContent = `R$ ${totals.final.toFixed(2)}`;
-    
-    // Automatic Rounding
     const finalRounded = Math.round(totals.final * 10) / 10;
     const adjustment = finalRounded - totals.final;
     const rowAdjustment = document.getElementById('row-adjustment');
-    
     if (Math.abs(adjustment) > 0.01) {
         rowAdjustment.classList.remove('hidden');
         document.getElementById('total-adjustment').textContent = `R$ ${adjustment.toFixed(2)}`;
     } else {
         rowAdjustment.classList.add('hidden');
     }
-
     inputTotalFinal.value = finalRounded.toFixed(2);
 };
 
-// Initial Render
+// Modals Removal logic
+document.getElementById('btn-cancel-remove-item').addEventListener('click', () => document.getElementById('confirm-remove-item-modal').classList.add('hidden'));
+document.getElementById('btn-confirm-remove-item').addEventListener('click', () => {
+    if (itemToRemoveId) {
+        cart.removeItem(itemToRemoveId);
+        itemToRemoveId = null;
+        document.getElementById('confirm-remove-item-modal').classList.add('hidden');
+        vibrate(100);
+    }
+});
+
 cart.notify();
 
 // --- Tab System ---
 const tabs = document.querySelectorAll('.btn-tab');
 const tabContents = document.querySelectorAll('.tab-content');
-
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
         const target = tab.dataset.tab;
@@ -153,7 +178,6 @@ tabs.forEach(tab => {
     });
 });
 
-// --- UI Clocks ---
 function updateClock() {
     const now = new Date();
     currentDatetime.textContent = now.toLocaleString('pt-BR');
@@ -161,34 +185,26 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// --- Summary Accordion Logic ---
-const summaryAccordion = document.getElementById('summary-accordion');
-const btnToggleSummary = document.getElementById('btn-toggle-summary');
-
-btnToggleSummary.addEventListener('click', () => {
-    summaryAccordion.classList.toggle('collapsed');
+document.getElementById('btn-toggle-summary').addEventListener('click', () => {
+    document.getElementById('summary-accordion').classList.toggle('collapsed');
     vibrate(30);
 });
 
-// --- Order Type & Payment Selection ---
 const btnOrcamento = document.getElementById('type-orcamento');
 const btnPedido = document.getElementById('type-pedido');
 const paymentButtons = document.querySelectorAll('.btn-payment');
-
 btnOrcamento.addEventListener('click', () => {
     orderType = 'ORCAMENTO';
     btnOrcamento.classList.add('active');
     btnPedido.classList.remove('active');
     vibrate(30);
 });
-
 btnPedido.addEventListener('click', () => {
     orderType = 'PEDIDO';
     btnPedido.classList.add('active');
     btnOrcamento.classList.remove('active');
     vibrate(30);
 });
-
 paymentButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         paymentType = btn.dataset.value;
@@ -198,7 +214,6 @@ paymentButtons.forEach(btn => {
     });
 });
 
-// --- Product Search & Selection ---
 productSearch.addEventListener('focus', () => {
     vibrate(20);
     document.body.classList.add('searching-mode');
@@ -211,7 +226,7 @@ function exitSearchMode() {
     searchResults.classList.add('hidden');
 }
 
-btnCancelSearch.addEventListener('click', (e) => {
+btnCancelSearch.addEventListener('click', () => {
     vibrate(20);
     exitSearchMode();
     productSearch.value = '';
@@ -224,47 +239,29 @@ productSearch.addEventListener('input', (e) => {
         searchResults.classList.add('hidden');
         return;
     }
-
-    const filtered = products.filter(p => 
-        (p.name && p.name.toLowerCase().includes(term)) || 
-        (p.code && p.code.toLowerCase().includes(term))
-    ).slice(0, 15);
-
+    const filtered = products.filter(p => (p.name && p.name.toLowerCase().includes(term)) || (p.code && p.code.toLowerCase().includes(term))).slice(0, 15);
     renderSearchResults(filtered);
 });
 
 function renderSearchResults(results) {
     searchResults.classList.remove('hidden');
-    
     if (products.length === 0) {
-        searchResults.innerHTML = `
-            <div class="search-item" style="text-align: center; padding: 2rem;">
-                <p style="color: var(--primary); font-weight: 700;">Catálogo Vazio!</p>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Vá na Engrenagem ⚙️ e suba o seu Excel.</p>
-            </div>`;
+        searchResults.innerHTML = `<div class="search-item" style="text-align: center; padding: 2rem;"><p style="color: var(--primary); font-weight: 700;">Catálogo Vazio!</p><p style="font-size: 0.8rem; color: var(--text-muted);">Aguardando sincronização com o PC...</p></div>`;
         return;
     }
-
     if (results.length === 0) {
-        searchResults.innerHTML = `
-            <div class="search-item" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                Nenhum produto encontrado.
-            </div>`;
+        searchResults.innerHTML = `<div class="search-item" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum produto encontrado.</div>`;
         return;
     }
-
     searchResults.innerHTML = results.map(p => `
         <div class="search-item" data-code="${p.code}">
             <span class="name">${p.name}</span>
             <span class="meta">Cód: ${p.code} | Estoque: ${p.stock || 0} | R$ ${parseFloat(p.price || 0).toFixed(2)}</span>
         </div>
     `).join('');
-
     searchResults.querySelectorAll('.search-item').forEach(el => {
         el.addEventListener('click', () => {
-            const code = el.dataset.code;
-            const product = products.find(p => p.code === code);
-            selectProduct(product);
+            selectProduct(products.find(p => p.code === el.dataset.code));
         });
     });
 }
@@ -276,21 +273,16 @@ function selectProduct(product) {
     inputQnty.value = 1;
     inputDiscountVal.value = '';
     inputDiscountPct.value = '';
-    
     updateInsertionTotals();
     exitSearchMode();
 }
 
-// --- Insertion Totals & Discount Logic ---
 function updateInsertionTotals(source = 'calc') {
     if (!selectedProduct) return;
-
     const price = parseFloat(inputPrice.value) || 0;
     const qnty = parseFloat(inputQnty.value) || 0;
     const gross = price * qnty;
-
     inputTotal.value = gross.toFixed(2);
-
     if (source === 'val') {
         const sync = syncDiscounts(price, qnty, 'val', inputDiscountVal.value);
         inputDiscountPct.value = sync.pct;
@@ -300,23 +292,14 @@ function updateInsertionTotals(source = 'calc') {
         inputDiscountVal.value = sync.val;
         inputDiscountPct.value = sync.pct;
     }
-
-    const discount = parseFloat(inputDiscountVal.value) || 0;
-    const final = gross - discount;
-    inputFinalPrice.value = final.toFixed(2);
+    inputFinalPrice.value = (gross - (parseFloat(inputDiscountVal.value) || 0)).toFixed(2);
 }
 
-// Quick Discount Buttons
 document.querySelectorAll('.btn-quick').forEach(btn => {
     btn.addEventListener('click', () => {
-        const discountVal = btn.dataset.discount;
-        if (discountVal.includes('%')) {
-            inputDiscountPct.value = Math.abs(parseFloat(discountVal));
-            updateInsertionTotals('pct');
-        } else {
-            inputDiscountVal.value = Math.abs(parseFloat(discountVal));
-            updateInsertionTotals('val');
-        }
+        const val = btn.dataset.discount;
+        if (val.includes('%')) { inputDiscountPct.value = Math.abs(parseFloat(val)); updateInsertionTotals('pct'); }
+        else { inputDiscountVal.value = Math.abs(parseFloat(val)); updateInsertionTotals('val'); }
         vibrate(30);
     });
 });
@@ -325,194 +308,79 @@ inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
 inputDiscountVal.addEventListener('input', () => updateInsertionTotals('val'));
 inputDiscountPct.addEventListener('input', () => updateInsertionTotals('pct'));
 
-// --- ADD ITEM TO CART ---
 btnAddItem.addEventListener('click', () => {
-    if (!selectedProduct) {
-        alert("Selecione um produto primeiro!");
-        return;
-    }
-    
-    const quantity = parseFloat(inputQnty.value) || 1;
-    const discountVal = parseFloat(inputDiscountVal.value) || 0;
-    const discountPct = parseFloat(inputDiscountPct.value) || 0;
-
-    // Send arguments correctly as CartManager expects: (product, quantity, discountVal, discountPct)
-    cart.addItem(selectedProduct, quantity, discountVal, discountPct);
-    
+    if (!selectedProduct) { alert("Selecione um produto!"); return; }
+    cart.addItem(selectedProduct, parseFloat(inputQnty.value) || 1, parseFloat(inputDiscountVal.value) || 0, parseFloat(inputDiscountPct.value) || 0);
     vibrate(50);
-    
-    // Clear form
     selectedProduct = null;
-    productSearch.value = '';
-    inputQnty.value = 1;
-    inputPrice.value = '';
-    inputTotal.value = '';
-    inputDiscountVal.value = '';
-    inputDiscountPct.value = '';
-    inputFinalPrice.value = '';
-    
-    // Mobile Redirect
-    if (window.innerWidth < 768) {
-        const btnVendaTab = document.getElementById('tab-venda');
-        if (btnVendaTab) btnVendaTab.click();
-    }
+    productSearch.value = ''; inputQnty.value = 1; inputPrice.value = ''; inputTotal.value = ''; inputDiscountVal.value = ''; inputDiscountPct.value = ''; inputFinalPrice.value = '';
 });
 
-// --- Config & Import ---
+// Config & Import
 const importModal = document.getElementById('import-modal');
-const btnOpenImport = document.getElementById('btn-open-import');
-const btnProcessImport = document.getElementById('btn-process-import');
-const csvFile = document.getElementById('csv-file');
-const inputConfigIp = document.getElementById('config-ip');
-const inputConfigSeller = document.getElementById('config-seller');
-const inputConfigPixKey = document.getElementById('config-pix-key');
-
-btnOpenImport.addEventListener('click', () => {
-    importModal.classList.remove('hidden');
-    vibrate(30);
-});
-
+document.getElementById('btn-open-import').addEventListener('click', () => { importModal.classList.remove('hidden'); vibrate(30); });
 document.getElementById('close-import').addEventListener('click', () => importModal.classList.add('hidden'));
 
-btnProcessImport.addEventListener('click', () => {
+document.getElementById('btn-process-import').addEventListener('click', async () => {
     vibrate(50);
-    configIp = inputConfigIp.value || 'localhost';
-    configSeller = inputConfigSeller.value || '';
-    configPixKey = inputConfigPixKey.value || '81997834549';
-
+    configIp = document.getElementById('config-ip').value || 'localhost';
+    configSeller = document.getElementById('config-seller').value || '';
+    configPixKey = document.getElementById('config-pix-key').value || '81997834549';
     localStorage.setItem('config_ip', configIp);
     localStorage.setItem('config_seller', configSeller);
     localStorage.setItem('config_pix_key', configPixKey);
     if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
-    const file = csvFile.files[0];
+    const file = document.getElementById('csv-file').files[0];
     if (file) {
         const reader = new FileReader();
         const extension = file.name.split('.').pop().toLowerCase();
-
-        const processResults = (data) => {
+        const processResults = async (data) => {
             const mapped = data.map(row => ({
-                code: String(row['Código Produto'] || row['Código de Barra'] || row.código || row.codigo || row.code || '').trim(),
+                code: String(row['Código Produto'] || row.código || row.codigo || row.code || '').trim(),
                 name: String(row['Nome Produto'] || row.nome || row.name || '').trim(),
-                price: parseFloat(String(row['Unitário'] || row.preço || row.preco || row.price || '0').replace(',', '.')),
-                stock: parseInt(row['Estoque'] || row.estoque || row.stock || 0)
+                price: parseFloat(String(row['Unitário'] || row.price || '0').replace(',', '.')),
+                stock: parseInt(row['Estoque'] || 0)
             })).filter(p => p.code && p.name && !isNaN(p.price));
 
             if (mapped.length > 0) {
                 products = mapped;
                 localStorage.setItem('products', JSON.stringify(products));
-                alert(`Sucesso! ${products.length} produtos importados.`);
+                // ENVIAR PARA O COMPUTADOR CENTRAL
+                await saveProductsToServer(products);
+                alert(`Sucesso! ${products.length} produtos importados e sincronizados.`);
                 importModal.classList.add('hidden');
-            } else {
-                alert("Erro: Nenhum produto válido encontrado.");
-            }
+            } else { alert("Erro: Planilha inválida."); }
         };
-
         if (extension === 'xlsx' || extension === 'xls') {
             reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                processResults(jsonData);
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                processResults(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
             };
             reader.readAsArrayBuffer(file);
         } else {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    processResults(results.data);
-                }
-            });
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: results => processResults(results.data) });
         }
-    } else {
-        alert("Configurações salvas.");
-        importModal.classList.add('hidden');
-    }
+    } else { alert("Configurações salvas."); importModal.classList.add('hidden'); }
 });
 
-// --- Printing Logic ---
-const btnPrint = document.getElementById('btn-print');
-const successScreen = document.getElementById('success-screen');
-const successMsg = document.getElementById('success-msg');
-const btnNextOrder = document.getElementById('btn-next-order');
-
-btnPrint.addEventListener('click', async () => {
-    if (cart.items.length === 0) {
-        document.getElementById('empty-cart-modal').classList.remove('hidden');
-        return;
-    }
-
+// Printing Logic
+document.getElementById('btn-print').addEventListener('click', async () => {
+    if (cart.items.length === 0) { document.getElementById('empty-cart-modal').classList.remove('hidden'); return; }
     vibrate(100);
     const totals = cart.getTotals();
-    const finalRounded = parseFloat(inputTotalFinal.value);
-
-    const orderData = {
-        empresa: ENTERPRISE,
-        vendedor: configSeller,
-        cliente: document.getElementById('client-name').value,
-        data: new Date().toLocaleString('pt-BR'),
-        tipo: orderType,
-        pagamento: paymentType,
-        items: cart.items,
-        subtotal: totals.gross,
-        desconto: totals.discount,
-        total: finalRounded,
-        pixKey: configPixKey
-    };
-
-    const serverUrl = `https://${configIp}/imprimir`;
-
+    const orderData = { empresa: ENTERPRISE, vendedor: configSeller, cliente: document.getElementById('client-name').value, data: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString(), tipo: orderType, pagamento: paymentType, itens: cart.items.map(i => ({ descricao: i.name, quantidade: i.quantity, total: i.totalFinal })), totalProdutos: totals.gross, descontos: totals.discount, totalFinal: parseFloat(inputTotalFinal.value), pixKey: configPixKey };
     try {
-        const response = await fetch(serverUrl, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify(orderData)
-        });
-
-        if (response.ok) {
-            successMsg.textContent = `${orderType} enviado com sucesso!`;
-            successScreen.classList.remove('hidden');
-        } else {
-            throw new Error("Erro no servidor");
-        }
-    } catch (err) {
-        console.error("Erro na impressão remota:", err);
-        window.print();
-    }
+        const res = await fetch(`https://${configIp}/imprimir`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }, body: JSON.stringify(orderData) });
+        if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} impresso!`; document.getElementById('success-screen').classList.remove('hidden'); }
+        else throw new Error();
+    } catch (err) { alert("Impressão falhou. Usando impressão do navegador."); window.print(); }
 });
 
-btnNextOrder.addEventListener('click', () => {
-    cart.clear();
-    successScreen.classList.add('hidden');
-    document.getElementById('tab-produtos').click();
-    vibrate(50);
-});
+document.getElementById('btn-next-order').addEventListener('click', () => { cart.clear(); document.getElementById('success-screen').classList.add('hidden'); document.getElementById('tab-produtos').click(); vibrate(50); });
+document.getElementById('close-empty-cart').addEventListener('click', () => document.getElementById('empty-cart-modal').classList.add('hidden'));
 
-// Modal Closers
-document.getElementById('close-empty-cart').addEventListener('click', () => {
-    document.getElementById('empty-cart-modal').classList.add('hidden');
-});
-
-// Clear Order Logic
-const btnClearOrder = document.getElementById('btn-clear-order');
-const confirmClearModal = document.getElementById('confirm-clear-modal');
-const btnCancelClear = document.getElementById('btn-cancel-clear');
-const btnConfirmClear = document.getElementById('btn-confirm-clear');
-
-btnClearOrder.addEventListener('click', () => {
-    confirmClearModal.classList.remove('hidden');
-    vibrate(30);
-});
-
-btnCancelClear.addEventListener('click', () => confirmClearModal.classList.add('hidden'));
-
-btnConfirmClear.addEventListener('click', () => {
-    cart.clear();
-    confirmClearModal.classList.add('hidden');
-    vibrate(100);
-});
+// Confirmation for Global Clear
+document.getElementById('btn-clear-order').addEventListener('click', () => { document.getElementById('confirm-clear-modal').classList.remove('hidden'); vibrate(30); });
+document.getElementById('btn-cancel-clear').addEventListener('click', () => document.getElementById('confirm-clear-modal').classList.add('hidden'));
+document.getElementById('btn-confirm-clear').addEventListener('click', () => { cart.clear(); document.getElementById('confirm-clear-modal').classList.add('hidden'); vibrate(100); });

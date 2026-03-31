@@ -1,13 +1,19 @@
 export class CartManager {
-    constructor(items = []) {
-        this.items = items;
+    constructor() {
+        const saved = localStorage.getItem('current_cart');
+        this.items = saved ? JSON.parse(saved) : [];
         this.manualAdjustment = 0;
         this.onUpdate = null;
     }
 
     loadItems(items) {
         this.items = items || [];
+        this.save();
         this.notify();
+    }
+
+    save() {
+        localStorage.setItem('current_cart', JSON.stringify(this.items));
     }
 
     addItem(product, quantity, discountVal = 0, discountPct = 0) {
@@ -80,10 +86,12 @@ export class CartManager {
     clear() {
         this.items = [];
         this.manualAdjustment = 0;
+        this.save();
         this.notify();
     }
 
     notify() {
+        this.save();
         if (this.onUpdate) this.onUpdate(this.items, this.getTotals());
     }
 }

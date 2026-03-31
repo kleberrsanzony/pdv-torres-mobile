@@ -17,6 +17,38 @@ app.use(bodyParser.json());
  */
 const PRINTER_INTERFACE = process.env.PRINTER_NAME || 'printer:ELGIN i8 (Copiar 1)';
 
+const fs = require('fs');
+const path = require('path');
+
+const PRODUCTS_FILE = path.join(__dirname, 'products.json');
+
+// --- PRODUCT SYNC ENDPOINTS ---
+
+// GET: Fetch products from server
+app.get('/produtos', (req, res) => {
+    if (!fs.existsSync(PRODUCTS_FILE)) {
+        return res.json([]);
+    }
+    try {
+        const data = fs.readFileSync(PRODUCTS_FILE, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (err) {
+        res.status(500).json({ error: "Erro ao ler produtos" });
+    }
+});
+
+// POST: Save products to server
+app.post('/produtos', (req, res) => {
+    try {
+        const products = req.body;
+        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+        console.log(`LOG: Catálogo atualizado com ${products.length} itens.`);
+        res.json({ success: true, count: products.length });
+    } catch (err) {
+        res.status(500).json({ error: "Erro ao salvar produtos" });
+    }
+});
+
 async function printOrder(data) {
   const printer = new ThermalPrinter({
     type: 'epson', // Usando string direta para evitar erro de driver
