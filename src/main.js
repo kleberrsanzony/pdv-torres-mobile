@@ -136,18 +136,24 @@ cart.onUpdate = (items, totals) => {
     cartCount.textContent = `${items.length} itens`;
     document.getElementById('total-gross').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
-    document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    document.getElementById('total-final-header').textContent = `R$ ${totals.final.toFixed(2)}`;
+
+    // Automatic Rounding (to 0.10)
     const finalRounded = Math.round(totals.final * 10) / 10;
     const adjustment = finalRounded - totals.final;
     const rowAdjustment = document.getElementById('row-adjustment');
+    
     if (Math.abs(adjustment) > 0.01) {
         rowAdjustment.classList.remove('hidden');
         document.getElementById('total-adjustment').textContent = `R$ ${adjustment.toFixed(2)}`;
     } else {
         rowAdjustment.classList.add('hidden');
     }
+
+    // Header Totals (Now with Rounding synced)
+    document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
+    document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
+    document.getElementById('total-final-header').textContent = `R$ ${finalRounded.toFixed(2)}`;
+    
     inputTotalFinal.value = finalRounded.toFixed(2);
 };
 
