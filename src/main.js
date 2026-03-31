@@ -737,7 +737,10 @@ btnPrint.addEventListener('click', () => {
         
         fetch(serverUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
             body: JSON.stringify(data)
         })
         .then(response => response.json())
