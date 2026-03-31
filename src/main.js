@@ -5,22 +5,25 @@ import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 import { registerSW } from 'virtual:pwa-register';
 
+// Register Service Worker for PWA (Installable App)
 const updateSW = registerSW({
-    onNeedRefresh() { },
-    onOfflineReady() { },
+  onNeedRefresh() {},
+  onOfflineReady() {},
 });
 
+// Initialize Lucide
 createIcons({
     icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert, Trash2 }
 });
 
+// Haptic Feedback Helper
 function vibrate(ms = 50) {
     if (window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(ms);
     }
 }
 
-// METADADOS OFICIAIS (CONFORME NOTA DA LOJA)
+// Enterprise Metadata (MANTIDO PARA IMPRESSÃO)
 const ENTERPRISE = {
     nome: "COMERCIAL TORRES",
     endereco: "RUA MARQUES DE OLINDA, 601",
@@ -29,16 +32,19 @@ const ENTERPRISE = {
     whatsapp: "(81) 98575-1320"
 };
 
-let products = JSON.parse(localStorage.getItem('products')) || [];
+// State Management
+let products = JSON.parse(localStorage.getItem('products')) || []; 
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
 let orderType = 'Orcamento';
 let itemToRemoveId = null;
 
+// Configs
 let configIp = localStorage.getItem('config_ip') || 'localhost';
 let configSeller = localStorage.getItem('config_seller') || 'KLEBER';
 let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 
+// DOM Elements
 const productSearch = document.getElementById('product-search');
 const searchResults = document.getElementById('search-results');
 const inputQnty = document.getElementById('input-qnty');
@@ -55,10 +61,13 @@ const currentDatetime = document.getElementById('current-datetime');
 const btnCancelSearch = document.getElementById('btn-cancel-search');
 const inputTotalFinal = document.getElementById('input-total-final');
 
+// Apply Initial Configs
 if (displayVendedor) displayVendedor.textContent = configSeller;
 
+// Initialize Managers
 const cart = new CartManager();
 
+// --- CENTRALIZED PRODUCT SYNC ---
 async function fetchProductsFromServer() {
     const serverUrl = `https://${configIp}/produtos`;
     try {
@@ -70,7 +79,7 @@ async function fetchProductsFromServer() {
                 localStorage.setItem('products', JSON.stringify(products));
             }
         }
-    } catch (err) { console.warn("Servidor offline."); }
+    } catch (err) { console.warn("Usando catálogo local."); }
 }
 
 async function saveProductsToServer(newProducts) {
@@ -86,6 +95,7 @@ async function saveProductsToServer(newProducts) {
 
 fetchProductsFromServer();
 
+// Configure Cart Update Listener
 cart.onUpdate = (items, totals) => {
     if (items.length === 0) {
         cartList.innerHTML = `<div class="empty-cart"><i data-lucide="package-open"></i><p>Carrinho vazio</p></div>`;
@@ -117,6 +127,7 @@ cart.onUpdate = (items, totals) => {
     document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
     
+    // Automatic Rounding (0.10)
     const finalRounded = Math.round(totals.final * 10) / 10;
     const adjustment = finalRounded - totals.final;
     const rowAdjustment = document.getElementById('row-adjustment');
@@ -129,6 +140,7 @@ cart.onUpdate = (items, totals) => {
     inputTotalFinal.value = finalRounded.toFixed(2);
 };
 
+// Modals removal
 document.getElementById('btn-cancel-remove-item').addEventListener('click', () => document.getElementById('confirm-remove-item-modal').classList.add('hidden'));
 document.getElementById('btn-confirm-remove-item').addEventListener('click', () => {
     if (itemToRemoveId) { cart.removeItem(itemToRemoveId); itemToRemoveId = null; document.getElementById('confirm-remove-item-modal').classList.add('hidden'); vibrate(100); }
@@ -136,6 +148,7 @@ document.getElementById('btn-confirm-remove-item').addEventListener('click', () 
 
 cart.notify();
 
+// --- TAB SYSTEM ---
 document.querySelectorAll('.btn-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.btn-tab').forEach(t => t.classList.remove('active'));
@@ -165,13 +178,14 @@ btnCancelSearch.addEventListener('click', () => { vibrate(20); exitSearchMode();
 productSearch.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     if (term.length < 1) { searchResults.classList.add('hidden'); return; }
-    renderSearchResults(products.filter(p => (p.name && p.name.toLowerCase().includes(term)) || (p.code && p.code.toLowerCase().includes(term))).slice(0, 15));
+    const filtered = products.filter(p => (p.name && p.name.toLowerCase().includes(term)) || (p.code && p.code.toLowerCase().includes(term))).slice(0, 15);
+    renderSearchResults(filtered);
 });
 
 function renderSearchResults(results) {
     searchResults.classList.remove('hidden');
     if (products.length === 0) { searchResults.innerHTML = `<div class="p-4 text-center">Catálogo Vazio! Sincronizando...</div>`; return; }
-    if (results.length === 0) { searchResults.innerHTML = `<div class="p-4 text-center">Nenhum produto.</div>`; return; }
+    if (results.length === 0) { searchResults.innerHTML = `<div class="p-4 text-center">Nenhum produto encontrado.</div>`; return; }
     searchResults.innerHTML = results.map(p => `<div class="search-item" data-code="${p.code}"><span class="name">${p.name}</span><span class="meta">Cód: ${p.code} | Estoque: ${p.stock || 0} | R$ ${parseFloat(p.price || 0).toFixed(2)}</span></div>`).join('');
     searchResults.querySelectorAll('.search-item').forEach(el => el.addEventListener('click', () => selectProduct(products.find(p => p.code === el.dataset.code))));
 }
@@ -219,15 +233,16 @@ document.getElementById('btn-process-import').addEventListener('click', async ()
     } else { document.getElementById('import-modal').classList.add('hidden'); }
 });
 
-// LOGICA DE IMPRESSÃO (CAMPOS IDENTICOS À NOTA OFICIAL)
+// --- PRINTING LOGIC (AJUSTADO PARA A NOTA OFICIAL) ---
 document.getElementById('btn-print').addEventListener('click', async () => {
     if (cart.items.length === 0) { document.getElementById('empty-cart-modal').classList.remove('hidden'); return; }
     vibrate(100);
     const totals = cart.getTotals();
     const finalVal = parseFloat(inputTotalFinal.value);
 
+    // MAPEAMENTO EXATO QUE O SERVIDOR ESPERA
     const orderData = {
-        empresa: ENTERPRISE.nome,
+        empresa: ENTERPRISE.nome, // String limpa
         endereco: ENTERPRISE.endereco,
         cidade: ENTERPRISE.cidade,
         telefone: ENTERPRISE.fone,
@@ -242,8 +257,7 @@ document.getElementById('btn-print').addEventListener('click', async () => {
             descricao: i.name.toUpperCase(),
             quantidade: i.quantity,
             unitario: i.price,
-            total: i.totalFinal,
-            unidade: "un" 
+            total: i.totalFinal
         })),
         totalProdutos: totals.gross,
         descontos: totals.discount,
@@ -256,9 +270,9 @@ document.getElementById('btn-print').addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }, 
             body: JSON.stringify(orderData) 
         });
-        if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} enviado!`; document.getElementById('success-screen').classList.remove('hidden'); }
+        if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} enviado com sucesso!`; document.getElementById('success-screen').classList.remove('hidden'); }
         else throw new Error();
-    } catch (err) { alert("Falha no servidor. Usando AirPrint."); window.print(); }
+    } catch (err) { alert("Falha na impressão automática. Usando AirPrint ou impressora do sistema."); window.print(); }
 });
 
 document.getElementById('btn-next-order').addEventListener('click', () => { cart.clear(); document.getElementById('success-screen').classList.add('hidden'); document.getElementById('tab-produtos').click(); vibrate(50); });
