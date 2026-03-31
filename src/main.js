@@ -1,5 +1,6 @@
 import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert } from 'lucide';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 import { registerSW } from 'virtual:pwa-register';
@@ -501,25 +502,48 @@ btnProcessImport.addEventListener('click', () => {
     localStorage.setItem('config_pix_key', configPixKey);
     if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
-    // Handle CSV import if file is selected
-    if (csvFile.files[0]) {
-        Papa.parse(csvFile.files[0], {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                const mapped = results.data.map(row => ({
-                    code: row.código || row.codigo || row.code || '',
-                    name: row.nome || row.name || '',
-                    price: parseFloat(row.preço || row.preco || row.price || 0),
-                    stock: parseInt(row.estoque || row.stock || 0)
-                })).filter(p => p.code && p.name);
+    // Handle Import (Excel or CSV)
+    const file = csvFile.files[0];
+    if (file) {
+        const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
 
+        const processResults = (data) => {
+            const mapped = data.map(row => ({
+                code: String(row['Código Produto'] || row.código || row.codigo || row.code || '').trim(),
+                name: String(row['Nome Produto'] || row.nome || row.name || '').trim(),
+                price: parseFloat(String(row['Unitário'] || row.preço || row.preco || row.price || '0').replace(',', '.')),
+                stock: parseInt(row['Estoque'] || row.estoque || row.stock || 0)
+            })).filter(p => p.code && p.name && !isNaN(p.price));
+
+            if (mapped.length > 0) {
                 products = mapped;
                 localStorage.setItem('products', JSON.stringify(products));
-                alert(`Configurações salvas e ${products.length} produtos importados.`);
+                alert(`Sucesso! ${products.length} produtos importados.`);
                 importModal.classList.add('hidden');
+            } else {
+                alert("Erro: Nenhum produto válido encontrado. Verifique se as colunas estão corretas (Código Produto, Nome Produto, Estoque, Unitário).");
             }
-        });
+        };
+
+        if (extension === 'xlsx' || extension === 'xls') {
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                processResults(jsonData);
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processResults(results.data);
+                }
+            });
+        }
     } else {
         alert("Configurações salvas com sucesso.");
         importModal.classList.add('hidden');
