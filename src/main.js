@@ -30,9 +30,19 @@ const ENTERPRISE = {
     contato: "(11) 99999-9999 / WhatsApp"
 };
 
+// --- Mock Products Database (Optional) ---
+/* Descomente abaixo para usar produtos fixos de teste sem precisar importar Excel
+const mockProducts = [
+    { code: '1', name: 'Cimento CP-II 50kg', price: 34.90, stock: 154 },
+    { code: '2', name: 'Arame Recozido (kg)', price: 12.50, stock: 88 },
+    { code: '3', name: 'Tijolo 8 Furos (un)', price: 0.95, stock: 2400 },
+    { code: '4', name: 'Areia Lavada M3', price: 120.00, stock: 10 }
+];
+// */
+
 // State Management
-let products = JSON.parse(localStorage.getItem('products')) || [];
-let currentOrder = JSON.parse(localStorage.getItem('current_order')) || [];
+let products = JSON.parse(localStorage.getItem('products')) || []; 
+// Se quiser carregar os mocks acima, mude para: let products = mockProducts;
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
 let orderType = 'ORCAMENTO'; // 'ORCAMENTO' or 'PEDIDO'
