@@ -1,4 +1,4 @@
-import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert } from 'lucide';
+import { createIcons, Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert, Trash2 } from 'lucide';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { CartManager, syncDiscounts } from './cart';
@@ -13,7 +13,7 @@ const updateSW = registerSW({
 
 // Initialize Lucide
 createIcons({
-    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert }
+    icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert, Trash2 }
 });
 
 // Haptic Feedback Helper
@@ -38,12 +38,11 @@ const mockProducts = [
     { code: '3', name: 'Tijolo 8 Furos (un)', price: 0.95, stock: 2400 },
     { code: '4', name: 'Areia Lavada M3', price: 120.00, stock: 10 }
 ];
-// */
+const products = mockProducts;
+*/
 
 // State Management
-let products = JSON.parse(localStorage.getItem('products')) || []; 
-// Se quiser carregar os mocks acima, mude para: let products = mockProducts;
-let currentOrder = JSON.parse(localStorage.getItem('current_order')) || [];
+let products = JSON.parse(localStorage.getItem('products')) || [];
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
 let orderType = 'ORCAMENTO'; // 'ORCAMENTO' or 'PEDIDO'
@@ -63,6 +62,7 @@ const cartCount = document.getElementById('cart-count');
 const displayVendedor = document.getElementById('display-vendedor');
 const currentDatetime = document.getElementById('current-datetime');
 const btnCancelSearch = document.getElementById('btn-cancel-search');
+const inputTotalFinal = document.getElementById('input-total-final');
 
 // Configs
 let configIp = localStorage.getItem('config_ip') || 'localhost';
@@ -73,16 +73,70 @@ let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
 // Initialize Managers
-const cart = new CartManager(cartList, cartCount);
-const scanner = new ScannerManager('reader', (code) => {
-    const product = products.find(p => p.code === code || p.barcode === code);
-    if (product) {
-        selectProduct(product);
-        vibrate(100);
+const cart = new CartManager();
+
+// Configure Cart Update Listener (CRITICAL)
+cart.onUpdate = (items, totals) => {
+    // 1. Update Cart UI list
+    if (items.length === 0) {
+        cartList.innerHTML = `
+            <div class="empty-cart">
+                <i data-lucide="package-open"></i>
+                <p>Carrinho vazio</p>
+            </div>`;
     } else {
-        alert("Produto não encontrado: " + code);
+        cartList.innerHTML = items.map(item => `
+            <div class="cart-item">
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-details">${item.quantity}un x R$ ${item.price.toFixed(2)} | Desc: R$ ${item.discountVal.toFixed(2)}</span>
+                </div>
+                <div class="item-right">
+                    <span class="item-total">R$ ${item.totalFinal.toFixed(2)}</span>
+                    <button class="btn-remove" data-id="${item.id}"><i data-lucide="trash-2"></i></button>
+                </div>
+            </div>
+        `).join('');
     }
-});
+    
+    // Refresh Icons inside cart
+    createIcons({ icons: { PackageOpen, Trash2 } });
+    
+    // 2. Remove Button Handlers
+    cartList.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            cart.removeItem(Number(btn.dataset.id));
+            vibrate(30);
+        });
+    });
+
+    // 3. Update Global UI Totals
+    cartCount.textContent = `${items.length} itens`;
+    document.getElementById('total-gross').textContent = `R$ ${totals.gross.toFixed(2)}`;
+    document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
+    
+    // Header Totals
+    document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
+    document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
+    document.getElementById('total-final-header').textContent = `R$ ${totals.final.toFixed(2)}`;
+    
+    // Automatic Rounding
+    const finalRounded = Math.round(totals.final * 10) / 10;
+    const adjustment = finalRounded - totals.final;
+    const rowAdjustment = document.getElementById('row-adjustment');
+    
+    if (Math.abs(adjustment) > 0.01) {
+        rowAdjustment.classList.remove('hidden');
+        document.getElementById('total-adjustment').textContent = `R$ ${adjustment.toFixed(2)}`;
+    } else {
+        rowAdjustment.classList.add('hidden');
+    }
+
+    inputTotalFinal.value = finalRounded.toFixed(2);
+};
+
+// Initial Render
+cart.notify();
 
 // --- Tab System ---
 const tabs = document.querySelectorAll('.btn-tab');
@@ -91,10 +145,8 @@ const tabContents = document.querySelectorAll('.tab-content');
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
         const target = tab.dataset.tab;
-        
         tabs.forEach(t => t.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
-        
         tab.classList.add('active');
         document.getElementById(target).classList.add('active');
         vibrate(30);
@@ -254,7 +306,7 @@ function updateInsertionTotals(source = 'calc') {
     inputFinalPrice.value = final.toFixed(2);
 }
 
-// Quick Discount Buttons (-5%, -10%, etc)
+// Quick Discount Buttons
 document.querySelectorAll('.btn-quick').forEach(btn => {
     btn.addEventListener('click', () => {
         const discountVal = btn.dataset.discount;
@@ -273,22 +325,20 @@ inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
 inputDiscountVal.addEventListener('input', () => updateInsertionTotals('val'));
 inputDiscountPct.addEventListener('input', () => updateInsertionTotals('pct'));
 
-// --- Cart Operations ---
+// --- ADD ITEM TO CART ---
 btnAddItem.addEventListener('click', () => {
     if (!selectedProduct) {
         alert("Selecione um produto primeiro!");
         return;
     }
     
-    const item = {
-        code: selectedProduct.code,
-        name: selectedProduct.name,
-        price: parseFloat(inputPrice.value),
-        qnty: parseFloat(inputQnty.value),
-        discount: parseFloat(inputDiscountVal.value) || 0
-    };
+    const quantity = parseFloat(inputQnty.value) || 1;
+    const discountVal = parseFloat(inputDiscountVal.value) || 0;
+    const discountPct = parseFloat(inputDiscountPct.value) || 0;
 
-    cart.addItem(item);
+    // Send arguments correctly as CartManager expects: (product, quantity, discountVal, discountPct)
+    cart.addItem(selectedProduct, quantity, discountVal, discountPct);
+    
     vibrate(50);
     
     // Clear form
@@ -301,46 +351,12 @@ btnAddItem.addEventListener('click', () => {
     inputDiscountPct.value = '';
     inputFinalPrice.value = '';
     
-    // Switch to cart tab if mobile
+    // Mobile Redirect
     if (window.innerWidth < 768) {
         const btnVendaTab = document.getElementById('tab-venda');
         if (btnVendaTab) btnVendaTab.click();
     }
-    
-    updateGlobalTotals();
 });
-
-// --- Global Totals & Print ---
-const inputTotalFinal = document.getElementById('input-total-final');
-
-function updateGlobalTotals() {
-    const totals = cart.getTotals();
-    
-    document.getElementById('total-gross').textContent = `R$ ${totals.gross.toFixed(2)}`;
-    document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    
-    // Automatic adjustment handling (Rounding)
-    const finalRounded = Math.round(totals.final * 10) / 10;
-    const adjustment = finalRounded - totals.final;
-    
-    const rowAdjustment = document.getElementById('row-adjustment');
-    if (Math.abs(adjustment) > 0.01) {
-        rowAdjustment.classList.remove('hidden');
-        document.getElementById('total-adjustment').textContent = `R$ ${adjustment.toFixed(2)}`;
-    } else {
-        rowAdjustment.classList.add('hidden');
-    }
-
-    inputTotalFinal.value = finalRounded.toFixed(2);
-    
-    // Update Header
-    document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
-    document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    document.getElementById('total-final-header').textContent = `R$ ${finalRounded.toFixed(2)}`;
-}
-
-// Global hook for cart changes
-window.addEventListener('cart-updated', updateGlobalTotals);
 
 // --- Config & Import ---
 const importModal = document.getElementById('import-modal');
@@ -350,11 +366,6 @@ const csvFile = document.getElementById('csv-file');
 const inputConfigIp = document.getElementById('config-ip');
 const inputConfigSeller = document.getElementById('config-seller');
 const inputConfigPixKey = document.getElementById('config-pix-key');
-
-// Load configs
-inputConfigIp.value = configIp;
-inputConfigSeller.value = configSeller;
-inputConfigPixKey.value = configPixKey;
 
 btnOpenImport.addEventListener('click', () => {
     importModal.classList.remove('hidden');
@@ -381,7 +392,7 @@ btnProcessImport.addEventListener('click', () => {
 
         const processResults = (data) => {
             const mapped = data.map(row => ({
-                code: String(row['Código Produto'] || row.código || row.codigo || row.code || '').trim(),
+                code: String(row['Código Produto'] || row['Código de Barra'] || row.código || row.codigo || row.code || '').trim(),
                 name: String(row['Nome Produto'] || row.nome || row.name || '').trim(),
                 price: parseFloat(String(row['Unitário'] || row.preço || row.preco || row.price || '0').replace(',', '.')),
                 stock: parseInt(row['Estoque'] || row.estoque || row.stock || 0)
@@ -434,6 +445,9 @@ btnPrint.addEventListener('click', async () => {
     }
 
     vibrate(100);
+    const totals = cart.getTotals();
+    const finalRounded = parseFloat(inputTotalFinal.value);
+
     const orderData = {
         empresa: ENTERPRISE,
         vendedor: configSeller,
@@ -442,9 +456,9 @@ btnPrint.addEventListener('click', async () => {
         tipo: orderType,
         pagamento: paymentType,
         items: cart.items,
-        subtotal: cart.getTotals().gross,
-        desconto: cart.getTotals().discount,
-        total: parseFloat(inputTotalFinal.value),
+        subtotal: totals.gross,
+        desconto: totals.discount,
+        total: finalRounded,
         pixKey: configPixKey
     };
 
@@ -468,24 +482,23 @@ btnPrint.addEventListener('click', async () => {
         }
     } catch (err) {
         console.error("Erro na impressão remota:", err);
-        window.print(); // Fallback to browser print
+        window.print();
     }
 });
 
 btnNextOrder.addEventListener('click', () => {
     cart.clear();
-    updateGlobalTotals();
     successScreen.classList.add('hidden');
     document.getElementById('tab-produtos').click();
     vibrate(50);
 });
 
-// --- Modal Closers ---
+// Modal Closers
 document.getElementById('close-empty-cart').addEventListener('click', () => {
     document.getElementById('empty-cart-modal').classList.add('hidden');
 });
 
-// Confirmation for Clear Order
+// Clear Order Logic
 const btnClearOrder = document.getElementById('btn-clear-order');
 const confirmClearModal = document.getElementById('confirm-clear-modal');
 const btnCancelClear = document.getElementById('btn-cancel-clear');
@@ -500,7 +513,6 @@ btnCancelClear.addEventListener('click', () => confirmClearModal.classList.add('
 
 btnConfirmClear.addEventListener('click', () => {
     cart.clear();
-    updateGlobalTotals();
     confirmClearModal.classList.add('hidden');
     vibrate(100);
 });
