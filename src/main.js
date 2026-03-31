@@ -43,6 +43,7 @@ const mockProducts = [
 // State Management
 let products = JSON.parse(localStorage.getItem('products')) || []; 
 // Se quiser carregar os mocks acima, mude para: let products = mockProducts;
+let currentOrder = JSON.parse(localStorage.getItem('current_order')) || [];
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
 let orderType = 'ORCAMENTO'; // 'ORCAMENTO' or 'PEDIDO'
@@ -61,6 +62,7 @@ const cartList = document.getElementById('cart-list');
 const cartCount = document.getElementById('cart-count');
 const displayVendedor = document.getElementById('display-vendedor');
 const currentDatetime = document.getElementById('current-datetime');
+const btnCancelSearch = document.getElementById('btn-cancel-search');
 
 // Configs
 let configIp = localStorage.getItem('config_ip') || 'localhost';
@@ -145,30 +147,23 @@ paymentButtons.forEach(btn => {
 });
 
 // --- Product Search & Selection ---
-const btnScan = document.getElementById('btn-scan');
-
 productSearch.addEventListener('focus', () => {
     vibrate(20);
     document.body.classList.add('searching-mode');
-    btnScan.innerHTML = `<i data-lucide="x"></i>`;
-    createIcons({ icons: { X } });
+    btnCancelSearch.classList.remove('hidden');
 });
 
 function exitSearchMode() {
     document.body.classList.remove('searching-mode');
-    btnScan.innerHTML = `<i data-lucide="camera"></i>`;
-    createIcons({ icons: { Camera } });
+    btnCancelSearch.classList.add('hidden');
     searchResults.classList.add('hidden');
 }
 
-btnScan.addEventListener('click', (e) => {
-    if (document.body.classList.contains('searching-mode')) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        exitSearchMode();
-        productSearch.value = '';
-        productSearch.blur();
-    }
+btnCancelSearch.addEventListener('click', (e) => {
+    vibrate(20);
+    exitSearchMode();
+    productSearch.value = '';
+    productSearch.blur();
 });
 
 productSearch.addEventListener('input', (e) => {
@@ -259,13 +254,31 @@ function updateInsertionTotals(source = 'calc') {
     inputFinalPrice.value = final.toFixed(2);
 }
 
+// Quick Discount Buttons (-5%, -10%, etc)
+document.querySelectorAll('.btn-quick').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const discountVal = btn.dataset.discount;
+        if (discountVal.includes('%')) {
+            inputDiscountPct.value = Math.abs(parseFloat(discountVal));
+            updateInsertionTotals('pct');
+        } else {
+            inputDiscountVal.value = Math.abs(parseFloat(discountVal));
+            updateInsertionTotals('val');
+        }
+        vibrate(30);
+    });
+});
+
 inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
 inputDiscountVal.addEventListener('input', () => updateInsertionTotals('val'));
 inputDiscountPct.addEventListener('input', () => updateInsertionTotals('pct'));
 
 // --- Cart Operations ---
 btnAddItem.addEventListener('click', () => {
-    if (!selectedProduct) return;
+    if (!selectedProduct) {
+        alert("Selecione um produto primeiro!");
+        return;
+    }
     
     const item = {
         code: selectedProduct.code,
@@ -290,7 +303,8 @@ btnAddItem.addEventListener('click', () => {
     
     // Switch to cart tab if mobile
     if (window.innerWidth < 768) {
-        document.getElementById('tab-venda').click();
+        const btnVendaTab = document.getElementById('tab-venda');
+        if (btnVendaTab) btnVendaTab.click();
     }
     
     updateGlobalTotals();
