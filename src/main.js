@@ -264,12 +264,10 @@ function exitSearchMode() {
 btnScan.addEventListener('click', (e) => {
     if (document.body.classList.contains('searching-mode')) {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation(); // Impede que a câmera abra por baixo do X
         exitSearchMode();
         productSearch.value = '';
         productSearch.blur();
-    } else {
-        // Original scan logic will trigger (already bound below)
     }
 });
 
