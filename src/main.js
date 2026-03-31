@@ -5,44 +5,40 @@ import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 import { registerSW } from 'virtual:pwa-register';
 
-// Register Service Worker for PWA (Installable App)
 const updateSW = registerSW({
     onNeedRefresh() { },
     onOfflineReady() { },
 });
 
-// Initialize Lucide
 createIcons({
     icons: { Search, Camera, ShoppingCart, Plus, PackageOpen, Printer, X, Settings, Zap, Download, Pencil, TriangleAlert, Trash2 }
 });
 
-// Haptic Feedback Helper
 function vibrate(ms = 50) {
     if (window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(ms);
     }
 }
 
-// Enterprise Metadata (MANTIDO PARA IMPRESSÃO)
+// METADADOS OFICIAIS (CONFORME NOTA DA LOJA)
 const ENTERPRISE = {
-    nome: "PDV Torres",
-    endereco: "Rua Marquês de Olinda, 601 - Centro",
-    contato: "(81) 98575-1320"
+    nome: "COMERCIAL TORRES",
+    endereco: "RUA MARQUES DE OLINDA, 601",
+    cidade: "CENTRO-SIRINHAEM",
+    fone: "(81) 3577-1419",
+    whatsapp: "(81) 98575-1320"
 };
 
-// State Management
 let products = JSON.parse(localStorage.getItem('products')) || [];
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
-let orderType = 'ORCAMENTO';
+let orderType = 'Orcamento';
 let itemToRemoveId = null;
 
-// Configs
 let configIp = localStorage.getItem('config_ip') || 'localhost';
-let configSeller = localStorage.getItem('config_seller') || '';
+let configSeller = localStorage.getItem('config_seller') || 'KLEBER';
 let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 
-// DOM Elements
 const productSearch = document.getElementById('product-search');
 const searchResults = document.getElementById('search-results');
 const inputQnty = document.getElementById('input-qnty');
@@ -59,13 +55,10 @@ const currentDatetime = document.getElementById('current-datetime');
 const btnCancelSearch = document.getElementById('btn-cancel-search');
 const inputTotalFinal = document.getElementById('input-total-final');
 
-// Apply Initial Configs
-if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
+if (displayVendedor) displayVendedor.textContent = configSeller;
 
-// Initialize Managers
 const cart = new CartManager();
 
-// --- CENTRALIZED PRODUCT SYNC ---
 async function fetchProductsFromServer() {
     const serverUrl = `https://${configIp}/produtos`;
     try {
@@ -77,7 +70,7 @@ async function fetchProductsFromServer() {
                 localStorage.setItem('products', JSON.stringify(products));
             }
         }
-    } catch (err) { console.warn("Usando catálogo local."); }
+    } catch (err) { console.warn("Servidor offline."); }
 }
 
 async function saveProductsToServer(newProducts) {
@@ -93,7 +86,6 @@ async function saveProductsToServer(newProducts) {
 
 fetchProductsFromServer();
 
-// Configure Cart Update Listener
 cart.onUpdate = (items, totals) => {
     if (items.length === 0) {
         cartList.innerHTML = `<div class="empty-cart"><i data-lucide="package-open"></i><p>Carrinho vazio</p></div>`;
@@ -124,8 +116,7 @@ cart.onUpdate = (items, totals) => {
     document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
     document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
-
-    // Automatic Rounding (0.10)
+    
     const finalRounded = Math.round(totals.final * 10) / 10;
     const adjustment = finalRounded - totals.final;
     const rowAdjustment = document.getElementById('row-adjustment');
@@ -138,7 +129,6 @@ cart.onUpdate = (items, totals) => {
     inputTotalFinal.value = finalRounded.toFixed(2);
 };
 
-// Modals logic
 document.getElementById('btn-cancel-remove-item').addEventListener('click', () => document.getElementById('confirm-remove-item-modal').classList.add('hidden'));
 document.getElementById('btn-confirm-remove-item').addEventListener('click', () => {
     if (itemToRemoveId) { cart.removeItem(itemToRemoveId); itemToRemoveId = null; document.getElementById('confirm-remove-item-modal').classList.add('hidden'); vibrate(100); }
@@ -146,7 +136,6 @@ document.getElementById('btn-confirm-remove-item').addEventListener('click', () 
 
 cart.notify();
 
-// Tab System
 document.querySelectorAll('.btn-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.btn-tab').forEach(t => t.classList.remove('active'));
@@ -162,8 +151,8 @@ setInterval(updateClock, 1000); updateClock();
 
 document.getElementById('btn-toggle-summary').addEventListener('click', () => { document.getElementById('summary-accordion').classList.toggle('collapsed'); vibrate(30); });
 
-document.getElementById('type-orcamento').addEventListener('click', () => { orderType = 'ORCAMENTO'; document.getElementById('type-orcamento').classList.add('active'); document.getElementById('type-pedido').classList.remove('active'); vibrate(30); });
-document.getElementById('type-pedido').addEventListener('click', () => { orderType = 'PEDIDO'; document.getElementById('type-pedido').classList.add('active'); document.getElementById('type-orcamento').classList.remove('active'); vibrate(30); });
+document.getElementById('type-orcamento').addEventListener('click', () => { orderType = 'Orcamento'; document.getElementById('type-orcamento').classList.add('active'); document.getElementById('type-pedido').classList.remove('active'); vibrate(30); });
+document.getElementById('type-pedido').addEventListener('click', () => { orderType = 'Pedido'; document.getElementById('type-pedido').classList.add('active'); document.getElementById('type-orcamento').classList.remove('active'); vibrate(30); });
 
 document.querySelectorAll('.btn-payment').forEach(btn => {
     btn.addEventListener('click', () => { paymentType = btn.dataset.value; document.querySelectorAll('.btn-payment').forEach(b => b.classList.remove('active')); btn.classList.add('active'); vibrate(30); });
@@ -197,8 +186,8 @@ function updateInsertionTotals(source = 'calc') {
     inputFinalPrice.value = (gross - (parseFloat(inputDiscountVal.value) || 0)).toFixed(2);
 }
 
-document.querySelectorAll('.btn-quick').forEach(btn => btn.addEventListener('click', () => {
-    const v = btn.dataset.discount; if (v.includes('%')) { inputDiscountPct.value = Math.abs(parseFloat(v)); updateInsertionTotals('pct'); } else { inputDiscountVal.value = Math.abs(parseFloat(v)); updateInsertionTotals('val'); } vibrate(30);
+document.querySelectorAll('.btn-quick').forEach(btn => btn.addEventListener('click', () => { 
+    const v = btn.dataset.discount; if (v.includes('%')) { inputDiscountPct.value = Math.abs(parseFloat(v)); updateInsertionTotals('pct'); } else { inputDiscountVal.value = Math.abs(parseFloat(v)); updateInsertionTotals('val'); } vibrate(30); 
 }));
 
 inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
@@ -217,7 +206,7 @@ document.getElementById('close-import').addEventListener('click', () => document
 
 document.getElementById('btn-process-import').addEventListener('click', async () => {
     vibrate(50); configIp = document.getElementById('config-ip').value || 'localhost'; configSeller = document.getElementById('config-seller').value || ''; configPixKey = document.getElementById('config-pix-key').value || '81997834549';
-    localStorage.setItem('config_ip', configIp); localStorage.setItem('config_seller', configSeller); localStorage.setItem('config_pix_key', configPixKey); if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
+    localStorage.setItem('config_ip', configIp); localStorage.setItem('config_seller', configSeller); localStorage.setItem('config_pix_key', configPixKey); if (displayVendedor) displayVendedor.textContent = configSeller;
     const f = document.getElementById('csv-file').files[0];
     if (f) {
         const reader = new FileReader(); const extension = f.name.split('.').pop().toLowerCase();
@@ -230,29 +219,31 @@ document.getElementById('btn-process-import').addEventListener('click', async ()
     } else { document.getElementById('import-modal').classList.add('hidden'); }
 });
 
-// --- PRINTING LOGIC (RESTORED TO ORIGINAL SERVER EXPECTATIONS) ---
+// LOGICA DE IMPRESSÃO (CAMPOS IDENTICOS À NOTA OFICIAL)
 document.getElementById('btn-print').addEventListener('click', async () => {
     if (cart.items.length === 0) { document.getElementById('empty-cart-modal').classList.remove('hidden'); return; }
     vibrate(100);
     const totals = cart.getTotals();
     const finalVal = parseFloat(inputTotalFinal.value);
 
-    // DADOS FORMATADOS EXATAMENTE COMO O SERVIDOR ESPERA
     const orderData = {
-        empresa: ENTERPRISE.nome, // String, não Objeto!
+        empresa: ENTERPRISE.nome,
         endereco: ENTERPRISE.endereco,
-        telefone: ENTERPRISE.contato,
-        whatsapp: "",
-        sequencia: Math.floor(Math.random() * 1000),
-        operacao: orderType, // "operacao" ao invés de "tipo"
+        cidade: ENTERPRISE.cidade,
+        telefone: ENTERPRISE.fone,
+        whatsapp: ENTERPRISE.whatsapp,
+        sequencia: Math.floor(10000 + Math.random() * 90000), 
+        operacao: orderType, 
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
-        vendedor: configSeller,
-        cliente: document.getElementById('client-name').value || "Cliente Balcão",
+        vendedor: configSeller || "KLEBER",
+        cliente: document.getElementById('client-name').value || "CLIENTE BALCAO",
         itens: cart.items.map(i => ({
-            descricao: i.name,
+            descricao: i.name.toUpperCase(),
             quantidade: i.quantity,
-            total: i.totalFinal
+            unitario: i.price,
+            total: i.totalFinal,
+            unidade: "un" 
         })),
         totalProdutos: totals.gross,
         descontos: totals.discount,
@@ -260,14 +251,14 @@ document.getElementById('btn-print').addEventListener('click', async () => {
     };
 
     try {
-        const res = await fetch(`https://${configIp}/imprimir`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-            body: JSON.stringify(orderData)
+        const res = await fetch(`https://${configIp}/imprimir`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }, 
+            body: JSON.stringify(orderData) 
         });
         if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} enviado!`; document.getElementById('success-screen').classList.remove('hidden'); }
         else throw new Error();
-    } catch (err) { alert("Falha na impressão via servidor. Usando AirPrint/Impressora do Sistema."); window.print(); }
+    } catch (err) { alert("Falha no servidor. Usando AirPrint."); window.print(); }
 });
 
 document.getElementById('btn-next-order').addEventListener('click', () => { cart.clear(); document.getElementById('success-screen').classList.add('hidden'); document.getElementById('tab-produtos').click(); vibrate(50); });
