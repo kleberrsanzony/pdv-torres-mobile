@@ -72,11 +72,8 @@
                     </div>
                     <div class="search-container">
                     <div class="input-with-icon">
-                        <input type="text" id="product-search" placeholder="Buscar produto por nome ou código..."
-                            autocomplete="off">
-                        <button id="btn-scan" title="Escanear Código">
-                            <i data-lucide="camera"></i>
-                        </button>
+                        <input type="text" id="product-search" placeholder="Pesquisar produto..." autocomplete="off">
+                        <button id="btn-cancel-search" class="btn-cancel-search hidden">Sair</button>
                     </div>
                     <div id="search-results" class="search-results hidden"></div>
                 </div>
@@ -283,6 +280,23 @@
             <div style="display: flex; gap: 0.75rem;">
                 <button id="btn-cancel-clear" class="btn-tab" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.05); font-size: 0.9rem; padding: 0.75rem;">Cancelar</button>
                 <button id="btn-confirm-clear" class="btn-tab active" style="flex: 1; justify-content: center; background: var(--danger); font-size: 0.9rem; padding: 0.75rem;">Limpar Tudo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar Remover Item -->
+    <div id="confirm-remove-item-modal" class="modal hidden">
+        <div class="modal-content" style="text-align: center; padding: 1.5rem;">
+            <div style="color: var(--danger); margin-bottom: 1rem;">
+                <i data-lucide="triangle-alert" style="width: 42px; height: 42px;"></i>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.2rem;">Remover este item?</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.85rem;">
+                Deseja realmente remover este produto do carrinho?
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button id="btn-cancel-remove-item" class="btn-tab" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.05); font-size: 0.9rem; padding: 0.75rem;">Não</button>
+                <button id="btn-confirm-remove-item" class="btn-tab active" style="flex: 1; justify-content: center; background: var(--danger); font-size: 0.9rem; padding: 0.75rem;">Sim, Remover</button>
             </div>
         </div>
     </div>

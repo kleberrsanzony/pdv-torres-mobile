@@ -193,7 +193,84 @@ h1, h2, h3, .logo {
 
 .hidden { display: none !important; }
 
-/* Product Form */
+/* Fullscreen Search Mode (Mobile UX) */
+body.searching-mode {
+  overflow: hidden; /* Evita scroll da página atrás */
+}
+
+body.searching-mode .main-header,
+body.searching-mode .tab-nav,
+body.searching-mode .section-title,
+body.searching-mode .product-form,
+body.searching-mode .summary-section,
+body.searching-mode .btn-fab,
+body.searching-mode footer {
+  display: none !important;
+}
+
+body.searching-mode .insertion-section {
+  margin: 0;
+  padding: 0;
+}
+
+body.searching-mode .search-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-main);
+  z-index: 2000;
+  padding: 1rem;
+}
+
+body.searching-mode .input-with-icon input {
+  height: 3.5rem;
+  font-size: 1.1rem;
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+  flex: 1;
+}
+
+.btn-cancel-search {
+  display: none;
+}
+
+body.searching-mode .btn-cancel-search {
+  display: block;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--primary);
+  padding: 0 1rem;
+  height: 3.5rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+body.searching-mode .search-results {
+  position: absolute !important;
+  top: 80px !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  max-height: calc(100vh - 100px) !important;
+  z-index: 9999 !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--primary) !important;
+  display: block !important;
+  visibility: visible !important;
+  overflow-y: auto !important;
+}
+
+body.searching-mode .search-item {
+  background: var(--bg-card);
+  margin-bottom: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- Product Form --- */
 .form-row, .discount-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -755,6 +832,21 @@ footer {
 .payment-selector select:focus {
   border-color: var(--primary);
   outline: none;
+}
+
+.btn-remove-text {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-remove-text:hover {
+  opacity: 0.7;
 }
 
 /* --- Tab Navigation --- */
