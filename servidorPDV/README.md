@@ -1,48 +1,26 @@
-# 🖨️ Gateway de Impressão Térmica (Servidor PDV) 
-**Módulo Backend Windows - Impressão ESC/POS**
+# Servidor de Impressão PDV Torres 🖨️⚙️
+**Backend em Node.js para Impressão Térmica Direta (ESC/POS)**
 
-Este é o servidor autônomo e responsável por receber as ordens de impressão do Celular (PWA) via WiFi (Network) e descarregar no controlador da impressora local (Ex: Elgin i8).
+Este servidor recebe os dados do PWA (via HTTPS/Ngrok) e comanda a impressora térmica conectada ao Windows.
 
 ---
 
-## 🛠️ Instalação no Windows
+## 🛠️ Configuração no Windows
 
-1. **Dependências do Servidor:**
-   Acesse a pasta `servidorPDV` pelo PowerShell do Windows ou Prompt de Comando, e instale os pacotes:
-   ```bash
-   npm install
-   ```
+### 1. Nome da Impressora
+A impressora deve estar instalada no Windows com o nome **exato**:
+`ELGIN i8 (Copiar 1)`
+*(Se o nome for diferente, altere no arquivo `server.js` na linha 18).*
 
-2. **Como Iniciar Constantemente Usando PM2 (Recomendado)**
-   O PM2 permite iniciar o servidor ocultamente sem a tela preta e ainda com auto-inicialização no Windows. Rode:
-   ```bash
-   npm install -g pm2
-   npm install -g pm2-windows-startup
-   
-   pm2 start server.js --name "vendas-print-server"
-   
-   pm2-startup install
+### 2. Rodando via PM2 (Início Automático)
+Para que o servidor inicie sozinho com o Windows e rode em background:
+1. Instale o PM2 globalmente: `npm install pm2 -g`
+2. Instale o iniciador de serviço: `npm install pm2-windows-startup -g`
+3. Na pasta do servidor, rode:
+   ```cmd
+   pm2 start server.js --name "servidor-pdv"
    pm2 save
    ```
-
----
-
-## 💻 Gerenciando o Servidor (Comandos do Dia a Dia)
-
-Uma vez que o `vendas-print-server` está ativo via PM2, use o CMD de qualquer parte do seu Windows para agir:
-
-* **Logs: Ver os Recibos sendo Gerados Hoje**
-  ```bash
-  pm2 logs vendas-print-server
-  ```
-* **Reiniciar: O Servidor após Alterações Code/Hardware**
-  ```bash
-  pm2 restart vendas-print-server
-  ```
-* **Como Parar Tudo:**
-  ```bash
-  pm2 stop vendas-print-server
-  ```
 
 ---
 
