@@ -30,56 +30,14 @@ const ENTERPRISE = {
     contato: "(11) 99999-9999 / WhatsApp"
 };
 
-const RODAPE = [
-    "Confira a mercadoria no ato da entrega",
-    "Não aceitamos reclamações posteriores",
-    "Alteração de preço sem prévio aviso",
-    "Desenvolvido por Sanzony Tech 2026"
-];
-
-// Default Products for Testing
-const DEFAULT_PRODUCTS = [
-    { code: "1001", name: "Cimento CP II-Z 32-40 50kg", price: 54.44, stock: 500 },
-    { code: "1002", name: "Argamassa AC-I Votorantim 20kg", price: 12.50, stock: 300 },
-    { code: "1003", name: "Tijolo 8 Furos (Milheiro)", price: 850.00, stock: 10 },
-    { code: "1004", name: "Areia Lavada (Metro m3)", price: 95.00, stock: 100 },
-    { code: "1005", name: "Pedra Brita 1 (Metro m3)", price: 110.00, stock: 100 }
-];
-
-// App State
-let products = JSON.parse(localStorage.getItem('products') || '[]');
-let salesHistory = JSON.parse(localStorage.getItem('sales_history') || '[]');
-
-// Seed if empty or update current test products
-if (products.length === 0) {
-    products = DEFAULT_PRODUCTS;
-    localStorage.setItem('products', JSON.stringify(products));
-} else {
-    // Force update of default test products prices if they exist
-    DEFAULT_PRODUCTS.forEach(def => {
-        const index = products.findIndex(p => p.code === def.code);
-        if (index !== -1) {
-            products[index].price = def.price;
-        }
-    });
-    localStorage.setItem('products', JSON.stringify(products));
-}
-const cart = new CartManager();
+// State Management
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let currentOrder = JSON.parse(localStorage.getItem('current_order')) || [];
 let selectedProduct = null;
-let editingItemId = null;
-let scanner = null;
+let paymentType = 'DINHEIRO';
+let orderType = 'ORCAMENTO'; // 'ORCAMENTO' or 'PEDIDO'
 
-// POS 2.0 State
-let orderType = "ORÇAMENTO";
-let paymentMethod = "DINHEIRO";
-let recentClients = JSON.parse(localStorage.getItem('recent_clients') || '[]');
-
-// Config state
-let configIp = localStorage.getItem('config_ip') || 'localhost';
-let configSeller = localStorage.getItem('config_seller') || '';
-let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
-
-// UI Elements
+// DOM Elements
 const productSearch = document.getElementById('product-search');
 const searchResults = document.getElementById('search-results');
 const inputQnty = document.getElementById('input-qnty');
@@ -91,168 +49,101 @@ const inputFinalPrice = document.getElementById('input-final-price');
 const btnAddItem = document.getElementById('btn-add-item');
 const cartList = document.getElementById('cart-list');
 const cartCount = document.getElementById('cart-count');
-const totalGross = document.getElementById('total-gross');
-const totalDiscount = document.getElementById('total-discount');
-const inputTotalFinal = document.getElementById('input-total-final');
-const rowAdjustment = document.getElementById('row-adjustment');
-const totalAdjustmentDisplay = document.getElementById('total-adjustment');
-const btnPrint = document.getElementById('btn-print');
-const currentDateTime = document.getElementById('current-datetime');
-const clientName = document.getElementById('client-name');
 const displayVendedor = document.getElementById('display-vendedor');
-const btnClearOrder = document.getElementById('btn-clear-order');
+const currentDatetime = document.getElementById('current-datetime');
 
-// Config Modal Elements
-const inputConfigIp = document.getElementById('config-ip');
-const inputConfigSeller = document.getElementById('config-seller');
-const inputConfigPixKey = document.getElementById('config-pix-key');
+// Configs
+let configIp = localStorage.getItem('config_ip') || 'localhost';
+let configSeller = localStorage.getItem('config_seller') || '';
+let configPixKey = localStorage.getItem('config_pix_key') || '81997834549';
 
-// Initialize UI with saved configs
-inputConfigIp.value = configIp;
-inputConfigSeller.value = configSeller;
-inputConfigPixKey.value = configPixKey;
+// Apply Initial Configs
 if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
-const btnToggleSummary = document.getElementById('btn-toggle-summary');
-const summaryAccordion = document.getElementById('summary-accordion');
-const totalFinalHeader = document.getElementById('total-final-header');
-const totalGrossHeader = document.getElementById('total-gross-header');
-const totalDiscountHeader = document.getElementById('total-discount-header');
-const tabButtons = document.querySelectorAll('.btn-tab');
+// Initialize Managers
+const cart = new CartManager(cartList, cartCount);
+const scanner = new ScannerManager('reader', (code) => {
+    const product = products.find(p => p.code === code || p.barcode === code);
+    if (product) {
+        selectProduct(product);
+        vibrate(100);
+    } else {
+        alert("Produto não encontrado: " + code);
+    }
+});
+
+// --- Tab System ---
+const tabs = document.querySelectorAll('.btn-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
-// --- Modular UI: Tab Logic ---
-tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        vibrate(30);
-        const target = btn.getAttribute('data-tab');
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
         
-        tabButtons.forEach(b => b.classList.remove('active'));
+        tabs.forEach(t => t.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
         
-        btn.classList.add('active');
+        tab.classList.add('active');
         document.getElementById(target).classList.add('active');
-        
-        // Se mudar de aba, recolhe o resumo para não atrapalhar
-        summaryAccordion.classList.add('collapsed');
+        vibrate(30);
     });
 });
 
-// --- Modular UI: Accordion Logic ---
-if (btnToggleSummary) {
-    btnToggleSummary.addEventListener('click', () => {
-        vibrate(40);
-        summaryAccordion.classList.toggle('collapsed');
-    });
-}
-
-// Modals
-const scannerModal = document.getElementById('scanner-modal');
-const importModal = document.getElementById('import-modal');
-const btnScan = document.getElementById('btn-scan');
-const btnOpenImport = document.getElementById('btn-open-import');
-const btnProcessImport = document.getElementById('btn-process-import');
-const btnExportSales = document.getElementById('btn-export-sales');
-const csvFile = document.getElementById('csv-file');
-
-const successScreen = document.getElementById('success-screen');
-const btnNextOrder = document.getElementById('btn-next-order');
-const successMsg = document.getElementById('success-msg');
-
-const typeOrcamento = document.getElementById('type-orcamento');
-const typePedido = document.getElementById('type-pedido');
-const paymentGrid = document.getElementById('payment-grid');
-const recentClientsList = document.getElementById('recent-clients-list');
-
-const emptyCartModal = document.getElementById('empty-cart-modal');
-const btnCloseEmptyCart = document.getElementById('close-empty-cart');
-
-// Update Clock
-setInterval(() => {
+// --- UI Clocks ---
+function updateClock() {
     const now = new Date();
-    currentDateTime.textContent = now.toLocaleString('pt-BR');
-}, 1000);
-
-// Sequence Number Logic
-function getNextSequence() {
-    let seq = parseInt(localStorage.getItem('order_sequence') || '0');
-    seq++;
-    localStorage.setItem('order_sequence', seq.toString());
-    return seq.toString().padStart(6, '0');
+    currentDatetime.textContent = now.toLocaleString('pt-BR');
 }
+setInterval(updateClock, 1000);
+updateClock();
 
-function getCurrentSequence() {
-    const seq = parseInt(localStorage.getItem('order_sequence') || '1');
-    return seq.toString().padStart(6, '0');
-}
+// --- Summary Accordion Logic ---
+const summaryAccordion = document.getElementById('summary-accordion');
+const btnToggleSummary = document.getElementById('btn-toggle-summary');
 
-// --- Persistence Layer ---
-function saveCartState() {
-    localStorage.setItem('active_cart', JSON.stringify(cart.items));
-}
-
-function loadCartState() {
-    const saved = localStorage.getItem('active_cart');
-    if (saved) {
-        const items = JSON.parse(saved);
-        if (items.length > 0) {
-            cart.loadItems(items);
-        }
-    }
-}
-
-// --- Customer History ---
-function saveRecentClient(name) {
-    if (!name || name === "Cliente Balcão") return;
-    recentClients = [name, ...recentClients.filter(c => c !== name)].slice(0, 10);
-    localStorage.setItem('recent_clients', JSON.stringify(recentClients));
-    renderRecentClients();
-}
-
-function renderRecentClients() {
-    recentClientsList.innerHTML = recentClients.map(c => `<option value="${c}">`).join('');
-}
-
-// --- Order Type Toggle ---
-typeOrcamento.addEventListener('click', () => {
+btnToggleSummary.addEventListener('click', () => {
+    summaryAccordion.classList.toggle('collapsed');
     vibrate(30);
-    orderType = "ORÇAMENTO";
-    typeOrcamento.classList.add('active');
-    typePedido.classList.remove('active');
 });
 
-typePedido.addEventListener('click', () => {
+// --- Order Type & Payment Selection ---
+const btnOrcamento = document.getElementById('type-orcamento');
+const btnPedido = document.getElementById('type-pedido');
+const paymentButtons = document.querySelectorAll('.btn-payment');
+
+btnOrcamento.addEventListener('click', () => {
+    orderType = 'ORCAMENTO';
+    btnOrcamento.classList.add('active');
+    btnPedido.classList.remove('active');
     vibrate(30);
-    orderType = "PEDIDO DE VENDA";
-    typePedido.classList.add('active');
-    typeOrcamento.classList.remove('active');
 });
 
-// --- Payment Selector Logic ---
-if (paymentGrid) {
-    const paymentButtons = paymentGrid.querySelectorAll('.btn-payment');
-    paymentButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            vibrate(30);
-            paymentMethod = btn.dataset.value;
-            paymentButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
+btnPedido.addEventListener('click', () => {
+    orderType = 'PEDIDO';
+    btnPedido.classList.add('active');
+    btnOrcamento.classList.remove('active');
+    vibrate(30);
+});
+
+paymentButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        paymentType = btn.dataset.value;
+        paymentButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        vibrate(30);
     });
-}
-
-// --- REMOVED: Quick Products Logic (Migrated to Tabs) ---
+});
 
 // --- Product Search & Selection ---
+const btnScan = document.getElementById('btn-scan');
+
 productSearch.addEventListener('focus', () => {
     vibrate(20);
     document.body.classList.add('searching-mode');
-    // Change Scan icon to X during search
     btnScan.innerHTML = `<i data-lucide="x"></i>`;
     createIcons({ icons: { X } });
 });
 
-// Helper to exit search mode
 function exitSearchMode() {
     document.body.classList.remove('searching-mode');
     btnScan.innerHTML = `<i data-lucide="camera"></i>`;
@@ -260,11 +151,10 @@ function exitSearchMode() {
     searchResults.classList.add('hidden');
 }
 
-// Click listener for the Scan/Cancel button
 btnScan.addEventListener('click', (e) => {
     if (document.body.classList.contains('searching-mode')) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // Impede que a câmera abra por baixo do X
+        e.stopImmediatePropagation();
         exitSearchMode();
         productSearch.value = '';
         productSearch.blur();
@@ -281,7 +171,7 @@ productSearch.addEventListener('input', (e) => {
     const filtered = products.filter(p => 
         (p.name && p.name.toLowerCase().includes(term)) || 
         (p.code && p.code.toLowerCase().includes(term))
-    ).slice(0, 10);
+    ).slice(0, 15);
 
     renderSearchResults(filtered);
 });
@@ -292,8 +182,8 @@ function renderSearchResults(results) {
     if (products.length === 0) {
         searchResults.innerHTML = `
             <div class="search-item" style="text-align: center; padding: 2rem;">
-                <p style="color: var(--danger); font-weight: 700;">Catálogo Vazio!</p>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Vá em Configurações ⚙️ e importe seu Excel.</p>
+                <p style="color: var(--primary); font-weight: 700;">Catálogo Vazio!</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Vá na Engrenagem ⚙️ e suba o seu Excel.</p>
             </div>`;
         return;
     }
@@ -301,7 +191,7 @@ function renderSearchResults(results) {
     if (results.length === 0) {
         searchResults.innerHTML = `
             <div class="search-item" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                Nenhum produto encontrado para esse termo.
+                Nenhum produto encontrado.
             </div>`;
         return;
     }
@@ -309,7 +199,7 @@ function renderSearchResults(results) {
     searchResults.innerHTML = results.map(p => `
         <div class="search-item" data-code="${p.code}">
             <span class="name">${p.name}</span>
-            <span class="meta">Cód: ${p.code} | Estoque: ${p.stock} | R$ ${p.price.toFixed(2)}</span>
+            <span class="meta">Cód: ${p.code} | Estoque: ${p.stock || 0} | R$ ${parseFloat(p.price || 0).toFixed(2)}</span>
         </div>
     `).join('');
 
@@ -331,7 +221,7 @@ function selectProduct(product) {
     inputDiscountPct.value = '';
     
     updateInsertionTotals();
-    exitSearchMode(); // Exit full search mode on selection
+    exitSearchMode();
 }
 
 // --- Insertion Totals & Discount Logic ---
@@ -363,176 +253,94 @@ inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
 inputDiscountVal.addEventListener('input', () => updateInsertionTotals('val'));
 inputDiscountPct.addEventListener('input', () => updateInsertionTotals('pct'));
 
-document.querySelectorAll('.btn-quick').forEach(btn => {
-    btn.addEventListener('click', () => {
-        vibrate(30);
-        if (!selectedProduct) return;
-        const discountAttr = btn.dataset.discount;
-        
-        if (discountAttr.endsWith('%')) {
-            inputDiscountPct.value = discountAttr.replace('%', '').replace('-', '');
-            updateInsertionTotals('pct');
-        } else if (discountAttr.startsWith('-')) {
-            inputDiscountVal.value = discountAttr.replace('-', '').replace('$', '');
-            updateInsertionTotals('val');
-        }
-    });
-});
-
-// --- Cart Management ---
+// --- Cart Operations ---
 btnAddItem.addEventListener('click', () => {
-    vibrate(60);
-    if (!selectedProduct) {
-        alert("Selecione um produto primeiro.");
-        return;
-    }
+    if (!selectedProduct) return;
+    
+    const item = {
+        code: selectedProduct.code,
+        name: selectedProduct.name,
+        price: parseFloat(inputPrice.value),
+        qnty: parseFloat(inputQnty.value),
+        discount: parseFloat(inputDiscountVal.value) || 0
+    };
 
-    const qnty = parseFloat(inputQnty.value);
-    const discVal = parseFloat(inputDiscountVal.value) || 0;
-    const discPct = parseFloat(inputDiscountPct.value) || 0;
-
-    if (editingItemId) {
-        cart.updateItem(editingItemId, qnty, discVal, discPct);
-        editingItemId = null;
-        btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
-        createIcons({ icons: { Plus }});
-    } else {
-        cart.addItem(selectedProduct, qnty, discVal, discPct);
-    }
+    cart.addItem(item);
+    vibrate(50);
     
     // Clear form
     selectedProduct = null;
-    editingItemId = null;
-    inputPrice.value = '';
+    productSearch.value = '';
     inputQnty.value = 1;
+    inputPrice.value = '';
     inputTotal.value = '';
     inputDiscountVal.value = '';
     inputDiscountPct.value = '';
     inputFinalPrice.value = '';
     
-    // Clear product search and focus for next item
-    productSearch.value = '';
-    productSearch.focus();
+    // Switch to cart tab if mobile
+    if (window.innerWidth < 768) {
+        document.getElementById('tab-venda').click();
+    }
+    
+    updateGlobalTotals();
 });
 
-cart.onUpdate = (items, totals) => {
-    renderCart(items);
-    updateTotals(totals);
-    saveCartState();
-};
+// --- Global Totals & Print ---
+const inputTotalFinal = document.getElementById('input-total-final');
 
-function renderCart(items) {
-    if (items.length === 0) {
-        cartList.innerHTML = `<div class="empty-cart"><i data-lucide="package-open"></i><p>Carrinho vazio</p></div>`;
-        createIcons({ icons: { PackageOpen } });
-        return;
-    }
-
-    cartList.innerHTML = items.map(item => `
-        <div class="cart-item">
-            <div class="top">
-                <span class="name">${item.name}</span>
-                <span class="total">R$ ${item.totalFinal.toFixed(2)}</span>
-            </div>
-            <div class="details">
-                <span>${item.quantity} x R$ ${item.price.toFixed(2)}</span>
-                ${item.discountVal > 0 ? `<span class="discount-badge">-${item.discountPct}% (R$ ${item.discountVal.toFixed(2)})</span>` : ''}
-            </div>
-            <div class="cart-item-actions">
-                <button class="btn-action edit" data-id="${item.id}" style="color: var(--primary);">
-                    <i data-lucide="pencil"></i> Editar
-                </button>
-                <button class="btn-action remove" data-id="${item.id}">
-                    <i data-lucide="x"></i> Remover
-                </button>
-            </div>
-        </div>
-    `).join('');
+function updateGlobalTotals() {
+    const totals = cart.getTotals();
     
-    createIcons({ icons: { X, Pencil } });
-
-    cartList.querySelectorAll('.remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (editingItemId === Number(btn.dataset.id)) {
-                // Cancel edit if removing the item being edited
-                editingItemId = null;
-                btnAddItem.innerHTML = `<i data-lucide="plus"></i> Adicionar Item`;
-                createIcons({ icons: { Plus }});
-                selectedProduct = null;
-                productSearch.value = '';
-                inputPrice.value = '';
-                inputQnty.value = 1;
-                inputTotal.value = '';
-                inputDiscountVal.value = '';
-                inputDiscountPct.value = '';
-                inputFinalPrice.value = '';
-            }
-            cart.removeItem(Number(btn.dataset.id));
-        });
-    });
-
-    cartList.querySelectorAll('.edit').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = Number(btn.dataset.id);
-            const item = cart.items.find(i => i.id === id);
-            if (!item) return;
-
-            vibrate(30);
-            editingItemId = id;
-            selectedProduct = { code: item.code, name: item.name, price: item.price };
-            
-            productSearch.value = item.name;
-            inputPrice.value = parseFloat(item.price).toFixed(2);
-            inputQnty.value = item.quantity;
-            inputDiscountVal.value = item.discountVal > 0 ? item.discountVal.toFixed(2) : '';
-            inputDiscountPct.value = item.discountPct > 0 ? item.discountPct.toFixed(2) : '';
-            
-            updateInsertionTotals();
-            
-            btnAddItem.innerHTML = `<i data-lucide="pencil"></i> Salvar Alterações`;
-            createIcons({ icons: { Pencil }});
-            
-            // Scroll to top to see the insertion form
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    });
-}
-
-function updateTotals(totals) {
-    cartCount.textContent = `${cart.items.length} itens`;
-    if (totalGross) totalGross.textContent = `R$ ${totals.gross.toFixed(2)}`;
-    if (totalDiscount) totalDiscount.textContent = `R$ ${totals.discount.toFixed(2)}`;
+    document.getElementById('total-gross').textContent = `R$ ${totals.gross.toFixed(2)}`;
+    document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
     
-    if (totalFinalHeader) totalFinalHeader.textContent = `R$ ${totals.final.toFixed(2)}`;
-    if (totalGrossHeader) totalGrossHeader.textContent = `R$ ${totals.gross.toFixed(2)}`;
-    if (totalDiscountHeader) totalDiscountHeader.textContent = `R$ ${totals.discount.toFixed(2)}`;
-
-    // Sync input field value (Manual Rounding Support)
-    if (inputTotalFinal && document.activeElement !== inputTotalFinal) {
-        inputTotalFinal.value = totals.final.toFixed(2);
-    }
-
-    // Handle visible Adjustment row
-    const adjustment = cart.manualAdjustment;
-    if (adjustment !== 0) {
+    // Automatic adjustment handling (Rounding)
+    const finalRounded = Math.round(totals.final * 10) / 10;
+    const adjustment = finalRounded - totals.final;
+    
+    const rowAdjustment = document.getElementById('row-adjustment');
+    if (Math.abs(adjustment) > 0.01) {
         rowAdjustment.classList.remove('hidden');
-        totalAdjustmentDisplay.textContent = `R$ ${adjustment.toFixed(2)}`;
+        document.getElementById('total-adjustment').textContent = `R$ ${adjustment.toFixed(2)}`;
     } else {
         rowAdjustment.classList.add('hidden');
     }
+
+    inputTotalFinal.value = finalRounded.toFixed(2);
+    
+    // Update Header
+    document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
+    document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
+    document.getElementById('total-final-header').textContent = `R$ ${finalRounded.toFixed(2)}`;
 }
 
-// --- Import & Config Logic ---
+// Global hook for cart changes
+window.addEventListener('cart-updated', updateGlobalTotals);
+
+// --- Config & Import ---
+const importModal = document.getElementById('import-modal');
+const btnOpenImport = document.getElementById('btn-open-import');
+const btnProcessImport = document.getElementById('btn-process-import');
+const csvFile = document.getElementById('csv-file');
+const inputConfigIp = document.getElementById('config-ip');
+const inputConfigSeller = document.getElementById('config-seller');
+const inputConfigPixKey = document.getElementById('config-pix-key');
+
+// Load configs
+inputConfigIp.value = configIp;
+inputConfigSeller.value = configSeller;
+inputConfigPixKey.value = configPixKey;
+
 btnOpenImport.addEventListener('click', () => {
-    inputConfigIp.value = localStorage.getItem('config_ip') || '';
-    inputConfigSeller.value = localStorage.getItem('config_seller') || '';
     importModal.classList.remove('hidden');
+    vibrate(30);
 });
+
 document.getElementById('close-import').addEventListener('click', () => importModal.classList.add('hidden'));
 
 btnProcessImport.addEventListener('click', () => {
     vibrate(50);
-    // Save configurations
     configIp = inputConfigIp.value || 'localhost';
     configSeller = inputConfigSeller.value || '';
     configPixKey = inputConfigPixKey.value || '81997834549';
@@ -542,7 +350,6 @@ btnProcessImport.addEventListener('click', () => {
     localStorage.setItem('config_pix_key', configPixKey);
     if (displayVendedor) displayVendedor.textContent = configSeller || "Sanzony";
 
-    // Handle Import (Excel or CSV)
     const file = csvFile.files[0];
     if (file) {
         const reader = new FileReader();
@@ -562,7 +369,7 @@ btnProcessImport.addEventListener('click', () => {
                 alert(`Sucesso! ${products.length} produtos importados.`);
                 importModal.classList.add('hidden');
             } else {
-                alert("Erro: Nenhum produto válido encontrado. Verifique se as colunas estão corretas (Código Produto, Nome Produto, Estoque, Unitário).");
+                alert("Erro: Nenhum produto válido encontrado.");
             }
         };
 
@@ -585,287 +392,91 @@ btnProcessImport.addEventListener('click', () => {
             });
         }
     } else {
-        alert("Configurações salvas com sucesso.");
+        alert("Configurações salvas.");
         importModal.classList.add('hidden');
     }
 });
 
-// Clear Order Logic
-const confirmClearModal = document.getElementById('confirm-clear-modal');
-const btnConfirmClear = document.getElementById('btn-confirm-clear');
-const btnCancelClear = document.getElementById('btn-cancel-clear');
+// --- Printing Logic ---
+const btnPrint = document.getElementById('btn-print');
+const successScreen = document.getElementById('success-screen');
+const successMsg = document.getElementById('success-msg');
+const btnNextOrder = document.getElementById('btn-next-order');
 
-if (btnClearOrder) {
-    btnClearOrder.addEventListener('click', () => {
-        if (cart.items.length === 0) return;
-        vibrate(40);
-        confirmClearModal.classList.remove('hidden');
-    });
-}
-
-if (btnCancelClear) {
-    btnCancelClear.addEventListener('click', () => {
-        confirmClearModal.classList.add('hidden');
-    });
-}
-
-if (btnConfirmClear) {
-    btnConfirmClear.addEventListener('click', () => {
-        vibrate(100);
-        cart.clear();
-        confirmClearModal.classList.add('hidden');
-    });
-}
-
-// Sales Export Logic
-btnExportSales.addEventListener('click', () => {
-    vibrate(50);
-    if (salesHistory.length === 0) {
-        alert("Nenhuma venda registrada hoje.");
-        return;
-    }
-
-    const csv = Papa.unparse(salesHistory);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `vendas_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-});
-
-// --- Scanner Logic ---
-btnScan.addEventListener('click', async () => {
-    scannerModal.classList.remove('hidden');
-    if (!scanner) {
-        scanner = new ScannerManager('reader', (decodedText) => {
-            const product = products.find(p => p.code === decodedText);
-            if (product) {
-                selectProduct(product);
-                scanner.stop();
-                scannerModal.classList.add('hidden');
-            } else {
-                alert(`Produto não encontrado: ${decodedText}`);
-            }
-        });
-    }
-    await scanner.start();
-});
-
-document.getElementById('close-scanner').addEventListener('click', async () => {
-    if (scanner) await scanner.stop();
-    scannerModal.classList.add('hidden');
-});
-
-// --- Thermal Ticket Generation (Epson i8 / 58mm) ---
-function generatePrintLayout(data) {
-    const printArea = document.getElementById('print-area');
-    printArea.className = 'mode-thermal';
-
-    const itemsHtml = data.itens.map(item => `
-        <div class="thermal-item">
-            <div class="thermal-item-name">${item.descricao.toUpperCase()}</div>
-            <div class="thermal-item-details">
-                <span>${item.quantidade} x R$ ${(item.total/item.quantidade).toFixed(2)}</span>
-                <span>R$ ${item.total.toFixed(2)}</span>
-            </div>
-        </div>
-    `).join('');
-
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(configPixKey)}`;
-
-    printArea.innerHTML = `
-        <div class="thermal-header">
-            <h3>${data.empresa}</h3>
-            <p>${data.endereco}</p>
-            <p>TELEFONE: ${data.telefone}</p>
-        </div>
-
-        <div class="thermal-divider-triple"></div>
-        
-        <div class="thermal-row-box">
-            <span>Sequência:</span>
-            <span class="thermal-val-big">${data.sequencia}</span>
-        </div>
-
-        <div class="thermal-info">
-            <div class="thermal-row"><span>Operação:</span> <strong>${data.operacao}</strong></div>
-            <div class="thermal-row"><span>Data:</span> ${data.data} ${data.hora}</div>
-            <div class="thermal-row"><span>Vendedor:</span> ${data.vendedor.toUpperCase()}</div>
-            <div class="thermal-row"><span>Cliente:</span> ${data.cliente.toUpperCase()}</div>
-        </div>
-
-        <div class="thermal-divider"></div>
-        
-        <div class="thermal-table-header">
-            <span>Descrição / Detalhes</span>
-            <span>Subtotal</span>
-        </div>
-        
-        <div class="thermal-items-list">
-            ${itemsHtml}
-        </div>
-
-        <div class="thermal-divider"></div>
-
-        <div class="thermal-totals">
-            <div class="thermal-row"><span>Valor Total Prod R$:</span> <span>${data.totalProdutos.toFixed(2)}</span></div>
-            ${data.descontos > 0 ? `<div class="thermal-row"><span>Descontos R$:</span> <span>${data.descontos.toFixed(2)}</span></div>` : ''}
-            <div class="thermal-row thermal-final"><span>VALOR TOTAL R$:</span> <span>${data.totalFinal.toFixed(2)}</span></div>
-            <div class="thermal-row"><span>Pagamento:</span> <span>${data.pagamento}</span></div>
-        </div>
-
-        <div class="thermal-divider-dashed"></div>
-
-        <div class="thermal-footer">
-            <p>Confira a mercadoria no ato da entrega</p>
-            <p>Não aceitamos reclamações posteriores</p>
-            <p>* Alteração de preço sem prévio aviso *</p>
-            
-            <div class="thermal-pix-section">
-                <p><strong>Pague com PIX</strong></p>
-                <img src="${qrCodeUrl}" alt="QR Code Pix" class="pix-qr">
-                <p style="font-size: 8pt; margin-top: 4px;">Chave: ${configPixKey}</p>
-            </div>
-
-            <p style="font-size: 7pt; margin-top: 10px; opacity: 0.7;">PDV Torres Mobile - v2.0</p>
-        </div>
-    `;
-}
-
-btnPrint.addEventListener('click', () => {
-    vibrate(80);
+btnPrint.addEventListener('click', async () => {
     if (cart.items.length === 0) {
-        emptyCartModal.classList.remove('hidden');
+        document.getElementById('empty-cart-modal').classList.remove('hidden');
         return;
     }
 
-    const sequence = getNextSequence();
-    const totals = cart.getTotals();
-    const client = clientName.value || "Cliente Balcão";
-
-    const data = {
-        empresa: ENTERPRISE.nome,
-        endereco: ENTERPRISE.endereco,
-        telefone: ENTERPRISE.contato,
-        whatsapp: configPixKey, // Assuming Pix key (phone) is also WhatsApp
-        sequencia: sequence,
-        operacao: orderType,
-        pagamento: paymentMethod,
-        data: new Date().toLocaleDateString('pt-BR'),
-        hora: new Date().toLocaleTimeString('pt-BR'),
-        vendedor: configSeller || "Sanzony",
-        cliente: client,
-        itens: cart.items.map(item => ({
-            quantidade: item.quantity,
-            descricao: item.name,
-            total: item.totalFinal
-        })),
-        totalProdutos: totals.gross,
-        descontos: totals.discount,
-        totalFinal: totals.final
+    vibrate(100);
+    const orderData = {
+        empresa: ENTERPRISE,
+        vendedor: configSeller,
+        cliente: document.getElementById('client-name').value,
+        data: new Date().toLocaleString('pt-BR'),
+        tipo: orderType,
+        pagamento: paymentType,
+        items: cart.items,
+        subtotal: cart.getTotals().gross,
+        desconto: cart.getTotals().discount,
+        total: parseFloat(inputTotalFinal.value),
+        pixKey: configPixKey
     };
 
-    // Save history & Client
-    salesHistory.push(data);
-    localStorage.setItem('sales_history', JSON.stringify(salesHistory));
-    saveRecentClient(client);
+    const serverUrl = `https://${configIp}/imprimir`;
 
-    // Prepare Layout
-    generatePrintLayout(data);
-
-    // Send to Electronic/Remote Print Server if IP is configured
-    if (configIp && configIp !== 'localhost') {
-        let urlBase = configIp.trim();
-        if (urlBase.endsWith('/')) urlBase = urlBase.slice(0, -1);
-        
-        let serverUrl = '';
-        // Se for Ngrok, removemos a porta :3000 se o usuário colou e forçamos HTTPS
-        if (urlBase.includes('ngrok')) {
-            // Remove qualquer :porta (ex: :3000) e protocolos
-            let cleanUrl = urlBase.split(':')[0]
-                .replace('http://', '')
-                .replace('https://', '')
-                .replace('//', '');
-            
-            // Reconstrói URL segura
-            serverUrl = `https://${cleanUrl}/imprimir`;
-        } else if (urlBase.startsWith('http://') || urlBase.startsWith('https://')) {
-            serverUrl = `${urlBase}/imprimir`;
-        } else {
-            serverUrl = urlBase.includes(':') ? `http://${urlBase}/imprimir` : `http://${urlBase}:3000/imprimir`;
-        }
-        
-        fetch(serverUrl, {
+    try {
+        const response = await fetch(serverUrl, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(res => {
-            if (res.success) {
-                console.log("Impressão enviada para o servidor remoto com sucesso.");
-            } else {
-                console.error("Erro no servidor de impressão:", res.error);
-                alert("Erro ao imprimir no servidor Windows: " + res.error);
-            }
-        })
-        .catch(err => {
-            console.error("Servidor de impressão inacessível:", err);
-            // Fallback to browser print if remote fails
-            window.print();
+            body: JSON.stringify(orderData)
         });
-    } else {
-        // Fallback/Local Browser printing
-        window.print();
-    }
 
-    // Show Success Screen
-    successMsg.textContent = `${orderType} #${sequence} finalizado com sucesso.`;
-    successScreen.classList.remove('hidden');
+        if (response.ok) {
+            successMsg.textContent = `${orderType} enviado com sucesso!`;
+            successScreen.classList.remove('hidden');
+        } else {
+            throw new Error("Erro no servidor");
+        }
+    } catch (err) {
+        console.error("Erro na impressão remota:", err);
+        window.print(); // Fallback to browser print
+    }
 });
 
 btnNextOrder.addEventListener('click', () => {
-    vibrate(50);
-    // Reset UI & Cart
-    cart.items = [];
-    cart.notify();
-    clientName.value = "Cliente Balcão";
-    localStorage.removeItem('active_cart'); // Clear persistence for fresh order
+    cart.clear();
+    updateGlobalTotals();
     successScreen.classList.add('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('tab-produtos').click();
+    vibrate(50);
 });
 
-// --- Startup ---
-loadCartState();
-renderRecentClients();
-
-// Modal Listeners
-btnCloseEmptyCart.addEventListener('click', () => {
-    emptyCartModal.classList.add('hidden');
+// --- Modal Closers ---
+document.getElementById('close-empty-cart').addEventListener('click', () => {
+    document.getElementById('empty-cart-modal').classList.add('hidden');
 });
 
-// --- Manual Total Adjustment (Rounding) ---
-if (inputTotalFinal) {
-    inputTotalFinal.addEventListener('input', (e) => {
-        const newTotal = parseFloat(e.target.value) || 0;
-        const currentTotals = cart.getTotals();
-        
-        // Ajuste = (Bruto - Descontos Itens) - Novo Total Desejado
-        const currentBaseFinal = currentTotals.final + cart.manualAdjustment;
-        const neededAdjustment = currentBaseFinal - newTotal;
-        
-        cart.setManualAdjustment(neededAdjustment);
-    });
-    
-    // Prevent accidental accordion toggle when clicking the input
-    inputTotalFinal.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
+// Confirmation for Clear Order
+const btnClearOrder = document.getElementById('btn-clear-order');
+const confirmClearModal = document.getElementById('confirm-clear-modal');
+const btnCancelClear = document.getElementById('btn-cancel-clear');
+const btnConfirmClear = document.getElementById('btn-confirm-clear');
+
+btnClearOrder.addEventListener('click', () => {
+    confirmClearModal.classList.remove('hidden');
+    vibrate(30);
+});
+
+btnCancelClear.addEventListener('click', () => confirmClearModal.classList.add('hidden'));
+
+btnConfirmClear.addEventListener('click', () => {
+    cart.clear();
+    updateGlobalTotals();
+    confirmClearModal.classList.add('hidden');
+    vibrate(100);
+});

@@ -232,12 +232,17 @@ body.searching-mode .input-with-icon input {
 }
 
 body.searching-mode .search-results {
-  position: relative;
-  max-height: calc(100vh - 80px); /* Ajustado para deixar espaço para o teclado */
-  margin-top: 1rem;
-  border: none;
-  background: none;
-  box-shadow: none;
+  position: absolute !important;
+  top: 80px !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  max-height: calc(100vh - 100px) !important;
+  z-index: 9999 !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--primary) !important;
+  display: block !important;
+  visibility: visible !important;
+  overflow-y: auto !important;
 }
 
 body.searching-mode .search-item {
