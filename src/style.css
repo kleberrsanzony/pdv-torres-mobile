@@ -901,8 +901,17 @@ footer {
     padding: 0;
   }
 
-  #app, .btn-fab, .modal, .summary-section footer {
+  /* Hide ALL UI elements during print */
+  #app, 
+  .tab-nav, 
+  .summary-section, 
+  .modal, 
+  .btn-fab, 
+  footer,
+  .success-screen {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
   }
 
   #print-area {
