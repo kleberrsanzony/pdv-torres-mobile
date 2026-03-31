@@ -244,6 +244,35 @@ if (paymentGrid) {
 // --- REMOVED: Quick Products Logic (Migrated to Tabs) ---
 
 // --- Product Search & Selection ---
+productSearch.addEventListener('focus', () => {
+    vibrate(20);
+    document.body.classList.add('searching-mode');
+    // Change Scan icon to X during search
+    btnScan.innerHTML = `<i data-lucide="x"></i>`;
+    createIcons({ icons: { X } });
+});
+
+// Helper to exit search mode
+function exitSearchMode() {
+    document.body.classList.remove('searching-mode');
+    btnScan.innerHTML = `<i data-lucide="camera"></i>`;
+    createIcons({ icons: { Camera } });
+    searchResults.classList.add('hidden');
+}
+
+// Click listener for the Scan/Cancel button
+btnScan.addEventListener('click', (e) => {
+    if (document.body.classList.contains('searching-mode')) {
+        e.preventDefault();
+        e.stopPropagation();
+        exitSearchMode();
+        productSearch.value = '';
+        productSearch.blur();
+    } else {
+        // Original scan logic will trigger (already bound below)
+    }
+});
+
 productSearch.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     if (term.length < 1) {
@@ -291,7 +320,7 @@ function selectProduct(product) {
     inputDiscountPct.value = '';
     
     updateInsertionTotals();
-    searchResults.classList.add('hidden');
+    exitSearchMode(); // Exit full search mode on selection
 }
 
 // --- Insertion Totals & Discount Logic ---
