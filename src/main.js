@@ -5,7 +5,7 @@ import { CartManager, syncDiscounts } from './cart';
 import { ScannerManager } from './scanner';
 import { registerSW } from 'virtual:pwa-register';
 
-// Register Service Worker for PWA (Installable App)
+// Register Service Worker for PWA
 const updateSW = registerSW({
   onNeedRefresh() {},
   onOfflineReady() {},
@@ -140,7 +140,7 @@ cart.onUpdate = (items, totals) => {
     inputTotalFinal.value = finalRounded.toFixed(2);
 };
 
-// Modals removal
+// Modals logic
 document.getElementById('btn-cancel-remove-item').addEventListener('click', () => document.getElementById('confirm-remove-item-modal').classList.add('hidden'));
 document.getElementById('btn-confirm-remove-item').addEventListener('click', () => {
     if (itemToRemoveId) { cart.removeItem(itemToRemoveId); itemToRemoveId = null; document.getElementById('confirm-remove-item-modal').classList.add('hidden'); vibrate(100); }
@@ -228,41 +228,79 @@ document.getElementById('btn-process-import').addEventListener('click', async ()
             const m = d.map(r => ({ code: String(r['Código Produto'] || r.código || r.code || '').trim(), name: String(r['Nome Produto'] || r.nome || '').trim(), price: parseFloat(String(r['Unitário'] || r.price || '0').replace(',', '.')), stock: parseInt(r['Estoque'] || 0) })).filter(p => p.code && p.name && !isNaN(p.price));
             if (m.length > 0) { products = m; localStorage.setItem('products', JSON.stringify(products)); await saveProductsToServer(products); alert(`Sucesso! ${products.length} sincronizados.`); document.getElementById('import-modal').classList.add('hidden'); }
         };
-        if (extension === 'xlsx' || extension === 'xls') { reader.onload = (e) => process(XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).SheetNames[0]])); reader.readAsArrayBuffer(f); }
+        if (extension === 'xlsx' || extension === 'xls') { reader.onload = (e) => process(XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).SheetNames[0]])); reader.readAsArrayBuffer(file); }
         else { Papa.parse(f, { header: true, complete: r => process(r.data) }); }
     } else { document.getElementById('import-modal').classList.add('hidden'); }
 });
 
-// --- PRINTING LOGIC (AJUSTADO PARA A NOTA OFICIAL) ---
+// --- PRINTING LOGIC + AIRPRINT FALLBACK ---
 document.getElementById('btn-print').addEventListener('click', async () => {
     if (cart.items.length === 0) { document.getElementById('empty-cart-modal').classList.remove('hidden'); return; }
     vibrate(100);
     const totals = cart.getTotals();
     const finalVal = parseFloat(inputTotalFinal.value);
+    const sequenciaVal = Math.floor(10000 + Math.random() * 90000);
+    const dataVal = new Date().toLocaleDateString('pt-BR');
+    const horaVal = new Date().toLocaleTimeString('pt-BR');
 
-    // MAPEAMENTO EXATO QUE O SERVIDOR ESPERA
+    // DADOS PARA O SERVIDOR ELGIN
     const orderData = {
-        empresa: ENTERPRISE.nome, // String limpa
-        endereco: ENTERPRISE.endereco,
-        cidade: ENTERPRISE.cidade,
-        telefone: ENTERPRISE.fone,
-        whatsapp: ENTERPRISE.whatsapp,
-        sequencia: Math.floor(10000 + Math.random() * 90000), 
-        operacao: orderType, 
-        data: new Date().toLocaleDateString('pt-BR'),
-        hora: new Date().toLocaleTimeString('pt-BR'),
-        vendedor: configSeller || "KLEBER",
-        cliente: document.getElementById('client-name').value || "CLIENTE BALCAO",
-        itens: cart.items.map(i => ({
-            descricao: i.name.toUpperCase(),
-            quantidade: i.quantity,
-            unitario: i.price,
-            total: i.totalFinal
-        })),
-        totalProdutos: totals.gross,
-        descontos: totals.discount,
-        totalFinal: finalVal
+        empresa: ENTERPRISE.nome, endereco: ENTERPRISE.endereco, cidade: ENTERPRISE.cidade, telefone: ENTERPRISE.fone, whatsapp: ENTERPRISE.whatsapp,
+        sequencia: sequenciaVal, operacao: orderType, data: dataVal, hora: horaVal, vendedor: configSeller || "KLEBER", cliente: document.getElementById('client-name').value || "CLIENTE BALCAO",
+        itens: cart.items.map(i => ({ descricao: i.name.toUpperCase(), quantidade: i.quantity, unitario: i.price, total: i.totalFinal })),
+        totalProdutos: totals.gross, descontos: totals.discount, totalFinal: finalVal
     };
+
+    // --- PREPARAR ÁREA DE IMPRESSÃO FISICA (PDF/AIRPRINT) ---
+    const printArea = document.getElementById('print-area');
+    if (printArea) {
+        printArea.innerHTML = `
+            <div style="font-family: 'Courier New', Courier, monospace; width: 300px; padding: 10px; font-size: 12px; color: #000; background: #fff;">
+                <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;">
+                    <strong style="font-size: 14px;">${ENTERPRISE.nome}</strong><br>
+                    ${ENTERPRISE.endereco}<br>
+                    ${ENTERPRISE.cidade}<br>
+                    FONE: ${ENTERPRISE.fone}
+                </div>
+                <div>
+                   <strong>Sequencia:</strong> ${sequenciaVal}<br>
+                   <strong>Operacao:</strong> ${orderType.toUpperCase()}<br>
+                   <strong>Data:</strong> ${dataVal} ${horaVal}<br>
+                   <strong>Vendedor:</strong> ${configSeller}<br>
+                   <strong>Cliente:</strong> ${orderData.cliente}
+                </div>
+                <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 5px 0; padding: 5px 0;">
+                    <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #000;">
+                                <th align="left">DESCRIÇÃO</th>
+                                <th align="right">QTD</th>
+                                <th align="right">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cart.items.map(item => `
+                                <tr>
+                                    <td align="left">${item.name.toUpperCase()}</td>
+                                    <td align="right">${item.quantity}</td>
+                                    <td align="right">${item.totalFinal.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="text-align: right;">
+                    Subtotal: R$ ${totals.gross.toFixed(2)}<br>
+                    Desc.: R$ ${totals.discount.toFixed(2)}<br>
+                    <strong style="font-size: 14px;">TOTAL: R$ ${finalVal.toFixed(2)}</strong>
+                </div>
+                <div style="text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px;">
+                   Obrigado pela preferência!<br>
+                   Confira a mercadoria no ato da entrega.
+                </div>
+            </div>
+        `;
+    }
 
     try {
         const res = await fetch(`https://${configIp}/imprimir`, { 
@@ -271,8 +309,13 @@ document.getElementById('btn-print').addEventListener('click', async () => {
             body: JSON.stringify(orderData) 
         });
         if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} enviado com sucesso!`; document.getElementById('success-screen').classList.remove('hidden'); }
-        else throw new Error();
-    } catch (err) { alert("Falha na impressão automática. Usando AirPrint ou impressora do sistema."); window.print(); }
+        else throw new Error("Erro no servidor");
+    } catch (err) { 
+        console.warn("Falha automática. Acionando AirPrint..."); 
+        window.print(); 
+        document.getElementById('success-msg').textContent = "Nota gerada!"; 
+        document.getElementById('success-screen').classList.remove('hidden');
+    }
 });
 
 document.getElementById('btn-next-order').addEventListener('click', () => { cart.clear(); document.getElementById('success-screen').classList.add('hidden'); document.getElementById('tab-produtos').click(); vibrate(50); });
