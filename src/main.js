@@ -287,8 +287,22 @@ productSearch.addEventListener('input', (e) => {
 });
 
 function renderSearchResults(results) {
+    searchResults.classList.remove('hidden');
+    
+    if (products.length === 0) {
+        searchResults.innerHTML = `
+            <div class="search-item" style="text-align: center; padding: 2rem;">
+                <p style="color: var(--danger); font-weight: 700;">Catálogo Vazio!</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Vá em Configurações ⚙️ e importe seu Excel.</p>
+            </div>`;
+        return;
+    }
+
     if (results.length === 0) {
-        searchResults.classList.add('hidden');
+        searchResults.innerHTML = `
+            <div class="search-item" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                Nenhum produto encontrado para esse termo.
+            </div>`;
         return;
     }
 
@@ -298,7 +312,6 @@ function renderSearchResults(results) {
             <span class="meta">Cód: ${p.code} | Estoque: ${p.stock} | R$ ${p.price.toFixed(2)}</span>
         </div>
     `).join('');
-    searchResults.classList.remove('hidden');
 
     searchResults.querySelectorAll('.search-item').forEach(el => {
         el.addEventListener('click', () => {
