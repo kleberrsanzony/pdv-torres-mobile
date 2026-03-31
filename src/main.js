@@ -7,8 +7,8 @@ import { registerSW } from 'virtual:pwa-register';
 
 // Register Service Worker for PWA (Installable App)
 const updateSW = registerSW({
-  onNeedRefresh() {},
-  onOfflineReady() {},
+    onNeedRefresh() { },
+    onOfflineReady() { },
 });
 
 // Initialize Lucide
@@ -26,12 +26,12 @@ function vibrate(ms = 50) {
 // Enterprise Metadata (MANTIDO PARA IMPRESSÃO)
 const ENTERPRISE = {
     nome: "PDV Torres",
-    endereco: "Av. Principal, 1000 - Centro",
-    contato: "(11) 99999-9999"
+    endereco: "Rua Marquês de Olinda, 601 - Centro",
+    contato: "(81) 98575-1320"
 };
 
 // State Management
-let products = JSON.parse(localStorage.getItem('products')) || []; 
+let products = JSON.parse(localStorage.getItem('products')) || [];
 let selectedProduct = null;
 let paymentType = 'DINHEIRO';
 let orderType = 'ORCAMENTO';
@@ -124,7 +124,7 @@ cart.onUpdate = (items, totals) => {
     document.getElementById('total-discount').textContent = `R$ ${totals.discount.toFixed(2)}`;
     document.getElementById('total-gross-header').textContent = `R$ ${totals.gross.toFixed(2)}`;
     document.getElementById('total-discount-header').textContent = `R$ ${totals.discount.toFixed(2)}`;
-    
+
     // Automatic Rounding (0.10)
     const finalRounded = Math.round(totals.final * 10) / 10;
     const adjustment = finalRounded - totals.final;
@@ -197,8 +197,8 @@ function updateInsertionTotals(source = 'calc') {
     inputFinalPrice.value = (gross - (parseFloat(inputDiscountVal.value) || 0)).toFixed(2);
 }
 
-document.querySelectorAll('.btn-quick').forEach(btn => btn.addEventListener('click', () => { 
-    const v = btn.dataset.discount; if (v.includes('%')) { inputDiscountPct.value = Math.abs(parseFloat(v)); updateInsertionTotals('pct'); } else { inputDiscountVal.value = Math.abs(parseFloat(v)); updateInsertionTotals('val'); } vibrate(30); 
+document.querySelectorAll('.btn-quick').forEach(btn => btn.addEventListener('click', () => {
+    const v = btn.dataset.discount; if (v.includes('%')) { inputDiscountPct.value = Math.abs(parseFloat(v)); updateInsertionTotals('pct'); } else { inputDiscountVal.value = Math.abs(parseFloat(v)); updateInsertionTotals('val'); } vibrate(30);
 }));
 
 inputQnty.addEventListener('input', () => updateInsertionTotals('pct'));
@@ -243,7 +243,7 @@ document.getElementById('btn-print').addEventListener('click', async () => {
         endereco: ENTERPRISE.endereco,
         telefone: ENTERPRISE.contato,
         whatsapp: "",
-        sequencia: Math.floor(Math.random() * 1000), 
+        sequencia: Math.floor(Math.random() * 1000),
         operacao: orderType, // "operacao" ao invés de "tipo"
         data: new Date().toLocaleDateString('pt-BR'),
         hora: new Date().toLocaleTimeString('pt-BR'),
@@ -260,10 +260,10 @@ document.getElementById('btn-print').addEventListener('click', async () => {
     };
 
     try {
-        const res = await fetch(`https://${configIp}/imprimir`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }, 
-            body: JSON.stringify(orderData) 
+        const res = await fetch(`https://${configIp}/imprimir`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+            body: JSON.stringify(orderData)
         });
         if (res.ok) { document.getElementById('success-msg').textContent = `${orderType} enviado!`; document.getElementById('success-screen').classList.remove('hidden'); }
         else throw new Error();
